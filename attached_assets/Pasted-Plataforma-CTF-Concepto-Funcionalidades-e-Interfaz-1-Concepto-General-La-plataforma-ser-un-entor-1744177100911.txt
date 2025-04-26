@@ -1,0 +1,112 @@
+Plataforma CTF: Concepto, Funcionalidades e Interfaz
+1. Concepto General
+La plataforma será un entorno web interactivo diseñado para alojar competiciones de Capture The Flag (CTF). Permitirá a usuarios individuales registrarse, formar equipos y participar en desafíos de ciberseguridad. Cada desafío presentará un problema o vulnerabilidad a explotar, y la solución se validará mediante una "flag" (una cadena de texto única). La correcta sumisión de flags otorgará puntos, que se acumularán tanto a nivel individual como de equipo, reflejándose en rankings dinámicos.
+
+2. Funcionalidades Clave
+Autenticación de Usuarios:
+
+Registro: Nuevos usuarios podrán crear cuentas proporcionando un nombre de usuario, correo electrónico y contraseña. Se podría incluir verificación por correo electrónico.
+
+Inicio de Sesión (Login): Usuarios registrados podrán acceder a la plataforma con sus credenciales.
+
+Recuperación de Contraseña: Un sistema para restablecer contraseñas olvidadas.
+
+Perfiles de Usuario:
+
+Mostrará información del usuario (nombre, equipo al que pertenece, puntuación total, ranking global, historial de desafíos resueltos).
+
+Posibilidad de personalizar el perfil (avatar, breve descripción).
+
+Gestión de Equipos:
+
+Creación: Usuarios podrán crear nuevos equipos, definiendo un nombre y opcionalmente una descripción o logo. El creador se convierte en el capitán inicial.
+
+Unirse a Equipos: Usuarios podrán buscar equipos existentes y solicitar unirse (o unirse directamente si el equipo es público). El capitán o administradores del equipo gestionarán las solicitudes.
+
+Abandonar Equipos: Miembros podrán salir de sus equipos.
+
+Gestión Interna: El capitán podrá nombrar administradores, gestionar miembros (invitar/expulsar) y editar la información del equipo.
+
+Listado y Acceso a Desafíos (Challenges):
+
+Visualización: Una sección central mostrará todos los desafíos disponibles, organizados por categorías (p. ej., Web, Criptografía, Forense, Reversing, Pwn, Miscelánea).
+
+Información del Desafío: Cada desafío mostrará su nombre, categoría, puntuación, número de equipos/usuarios que lo han resuelto y, opcionalmente, una descripción y nivel de dificultad.
+
+Acceso: Un botón o enlace claro ("Acceder al Reto", "Iniciar Instancia") dirigirá al usuario al entorno del desafío. Esto podría ser un enlace a una máquina virtual, un contenedor Docker, un sitio web vulnerable, un archivo para descargar, etc.
+
+Sumisión de Flags:
+
+Un campo de texto claramente identificado en la página del desafío o en una sección general permitirá a los usuarios introducir la flag encontrada.
+
+Validación: El sistema comprobará si la flag es correcta para ese desafío específico y ese usuario/equipo.
+
+Feedback: Se informará al usuario si la flag es correcta o incorrecta. En caso de éxito, se actualizará la puntuación y el estado del desafío.
+
+Sistema de Puntuación:
+
+Cada desafío tendrá asignada una puntuación base.
+
+Puntuación Dinámica (Opcional): La puntuación podría disminuir a medida que más equipos resuelvan el desafío (para premiar a los primeros).
+
+Los puntos se asignarán al usuario individual y al equipo al que pertenece en el momento de la resolución.
+
+Rankings (Scoreboard):
+
+Ranking de Competición/Evento: Mostrará la clasificación de equipos (y/o individuos) para un evento CTF específico en tiempo real. Columnas típicas: Posición, Nombre del Equipo/Usuario, Puntuación, Hora de la última flag válida.
+
+Ranking Global: Una clasificación histórica o acumulada de todos los tiempos, mostrando los equipos/usuarios con mayor puntuación general en la plataforma.
+
+Gráficos (Opcional): Visualización del progreso de los equipos a lo largo del tiempo durante una competición.
+
+Administración (Backend):
+
+Gestión de usuarios y equipos.
+
+Creación, edición y eliminación de desafíos y flags.
+
+Gestión de competiciones (fechas de inicio/fin, desafíos incluidos).
+
+Monitorización de la plataforma y logs.
+
+3. Diseño de Interfaz Profesional
+Se busca una interfaz limpia, moderna y funcional, orientada a la eficiencia y claridad.
+
+Paleta de Colores: Predominantemente oscura (negro, grises oscuros, azules profundos) para reducir la fatiga visual, con colores de acento vibrantes (p. ej., verde neón, cian, naranja) para botones, enlaces y elementos importantes.
+
+Tipografía: Fuentes sans-serif claras y legibles (como Inter, Roboto, Open Sans). Uso de fuentes monoespaciadas para flags, código o datos técnicos.
+
+Layout:
+
+Navegación Principal: Una barra lateral fija o una barra superior con enlaces claros a las secciones principales: Desafíos, Ranking, Equipos, Perfil, (y Admin si aplica).
+
+Dashboard/Inicio: Podría mostrar un resumen rápido: próximos eventos, desafíos recientemente añadidos, posición actual en el ranking, notificaciones.
+
+Vista de Desafíos: Formato de tarjetas o lista. Cada tarjeta/fila debe mostrar claramente el nombre, categoría, puntos y estado (resuelto/no resuelto). Filtros y buscador por categoría, nombre o dificultad.
+
+Vista de Ranking: Tabla clara y ordenada, fácil de escanear. Posibilidad de buscar equipos/usuarios. Actualización en tiempo real (o con un botón de refresco).
+
+Página de Desafío Individual: Descripción detallada, enlace de acceso, campo de sumisión de flag prominente, historial de intentos (quizás oculto), archivos descargables si los hubiera.
+
+Elementos UI:
+
+Botones: Claramente identificables, con estados hover/active.
+
+Iconos: Uso de iconos (p. ej., de Lucide Icons o FontAwesome) para mejorar la comprensión visual (categorías, estado resuelto, enlaces).
+
+Notificaciones: Sistema sutil para informar sobre flags correctas, nuevas solicitudes de equipo, etc. (p. ej., toasts o un indicador en la barra de navegación).
+
+Responsividad: Diseño totalmente adaptable a diferentes tamaños de pantalla (escritorio, tablet, móvil).
+
+4. Características Adicionales a Considerar
+Sistema de Pistas (Hints): Permitir desbloquear pistas para desafíos a cambio de una penalización de puntos.
+
+Integración con Discord/Slack: Notificaciones automáticas sobre nuevos desafíos, primeros en resolver ("First Blood"), etc.
+
+API: Ofrecer una API para que los usuarios puedan interactuar programáticamente con la plataforma (p. ej., obtener datos del ranking, enviar flags).
+
+Modo Competición vs. Práctica: Diferenciar entre eventos cronometrados y desafíos disponibles permanentemente para practicar.
+
+Anti-Cheating: Medidas para detectar y prevenir el intercambio de flags o el uso de múltiples cuentas.
+
+Esta estructura proporciona una base sólida para una plataforma CTF completa y profesional, enfocada en la experiencia del usuario y la funcionalidad competitiva.

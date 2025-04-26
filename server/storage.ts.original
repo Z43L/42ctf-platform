@@ -1,0 +1,2747 @@
+import {
+  users, teams, categories, challenges, submissions, hintUnlocks, 
+  competitions, competitionChallenges, teamJoinRequests,
+  usersDuelStats, duelQueue, duelChallenges, duelMatches, duelMatchChallenges,
+  duelImages, duelTerminalSessions,
+  type User, type InsertUser, 
+  type Team, type InsertTeam, 
+  type Category, type InsertCategory, 
+  type Challenge, type InsertChallenge, 
+  type Submission, type InsertSubmission, 
+  type HintUnlock, type InsertHintUnlock, 
+  type Competition, type InsertCompetition, 
+  type CompetitionChallenge, type InsertCompetitionChallenge, 
+  type TeamJoinRequest, type InsertTeamJoinRequest,
+  type UsersDuelStats, type InsertUsersDuelStats,
+  type DuelQueue, type InsertDuelQueue,
+  type DuelChallenge, type InsertDuelChallenge,
+  type DuelMatch, type InsertDuelMatch,
+  type DuelMatchChallenge, type InsertDuelMatchChallenge,
+  type DuelImage, type InsertDuelImage,
+  type DuelTerminalSession, type InsertDuelTerminalSession
+} from "@shared/schema";
+
+// Storage interface for all CRUD operations
+export interface IStorage {
+  // User operations
+  getUser(id: number): Promise<User | undefined>;
+  getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  createUser(user: InsertUser): Promise<User>;
+  updateUser(id: number, userData: Partial<User>): Promise<User | undefined>;
+  listUsers(): Promise<User[]>;
+  
+  // Team operations
+  getTeam(id: number): Promise<Team | undefined>;
+  getTeamByName(name: string): Promise<Team | undefined>;
+  createTeam(team: InsertTeam): Promise<Team>;
+  updateTeam(id: number, teamData: Partial<Team>): Promise<Team | undefined>;
+  deleteTeam(id: number): Promise<boolean>;
+  listTeams(): Promise<Team[]>;
+  getTeamMembers(teamId: number): Promise<User[]>;
+  
+  // Category operations
+  getCategory(id: number): Promise<Category | undefined>;
+  createCategory(category: InsertCategory): Promise<Category>;
+  updateCategory(id: number, categoryData: Partial<Category>): Promise<Category | undefined>;
+  listCategories(): Promise<Category[]>;
+  
+  // Challenge operations
+  getChallenge(id: number): Promise<Challenge | undefined>;
+  createChallenge(challenge: InsertChallenge): Promise<Challenge>;
+  updateChallenge(id: number, challengeData: Partial<Challenge>): Promise<Challenge | undefined>;
+  deleteChallenge(id: number): Promise<boolean>;
+  listChallenges(): Promise<Challenge[]>;
+  getChallengesByCategory(categoryId: number): Promise<Challenge[]>;
+  
+  // Submission operations
+  getSubmission(id: number): Promise<Submission | undefined>;
+  createSubmission(submission: InsertSubmission): Promise<Submission>;
+  listSubmissionsByUser(userId: number): Promise<Submission[]>;
+  listSubmissionsByTeam(teamId: number): Promise<Submission[]>;
+  listSubmissionsByChallenge(challengeId: number): Promise<Submission[]>;
+  isChallengeCompletedByUser(userId: number, challengeId: number): Promise<boolean>;
+  isChallengeCompletedByTeam(teamId: number, challengeId: number): Promise<boolean>;
+  
+  // Hint operations
+  createHintUnlock(hintUnlock: InsertHintUnlock): Promise<HintUnlock>;
+  isHintUnlockedByUser(userId: number, challengeId: number): Promise<boolean>;
+  isHintUnlockedByTeam(teamId: number, challengeId: number): Promise<boolean>;
+  
+  // Competition operations
+  getCompetition(id: number): Promise<Competition | undefined>;
+  getActiveCompetition(): Promise<Competition | undefined>;
+  createCompetition(competition: InsertCompetition): Promise<Competition>;
+  updateCompetition(id: number, competitionData: Partial<Competition>): Promise<Competition | undefined>;
+  addChallengeToCompetition(competitionId: number, challengeId: number): Promise<CompetitionChallenge>;
+  
+  // Team Join Request operations
+  createTeamJoinRequest(request: InsertTeamJoinRequest): Promise<TeamJoinRequest>;
+  updateTeamJoinRequest(id: number, status: string): Promise<TeamJoinRequest | undefined>;
+  getTeamJoinRequests(teamId: number): Promise<TeamJoinRequest[]>;
+  getUserTeamJoinRequests(userId: number): Promise<TeamJoinRequest[]>;
+  
+  // Scoreboard operations
+  getUserScore(userId: number): Promise<number>;
+  getTeamScore(teamId: number): Promise<number>;
+  getUserScoreboard(): Promise<{ userId: number, username: string, score: number }[]>;
+  getTeamScoreboard(): Promise<{ teamId: number, teamName: string, score: number }[]>;
+  
+  // Duel operations
+  // User duel stats
+  getDuelStats(userId: number): Promise<UsersDuelStats | undefined>;
+  createDuelStats(stats: InsertUsersDuelStats): Promise<UsersDuelStats>;
+  updateDuelStats(userId: number, win: boolean, ratingChange: number): Promise<UsersDuelStats | undefined>;
+  getDuelLeaderboard(): Promise<{ userId: number, username: string, rating: number, wins: number, losses: number }[]>;
+  
+  // Duel Queue
+  addToQueue(userId: number): Promise<DuelQueue>;
+  removeFromQueue(userId: number): Promise<boolean>;
+  isUserInQueue(userId: number): Promise<boolean>;
+  getQueuedUsers(): Promise<DuelQueue[]>;
+  matchUsersFromQueue(): Promise<{ player1Id: number, player2Id: number } | null>;
+  
+  // Duel Challenge
+  createDuelChallenge(challenge: InsertDuelChallenge): Promise<DuelChallenge>;
+  getDuelChallenge(id: number): Promise<DuelChallenge | undefined>;
+  getUserDuelChallenges(userId: number): Promise<DuelChallenge[]>;
+  updateDuelChallengeStatus(id: number, status: string): Promise<DuelChallenge | undefined>;
+  
+  // Duel Match
+  createDuelMatch(match: InsertDuelMatch): Promise<DuelMatch>;
+  getDuelMatch(id: number): Promise<DuelMatch | undefined>;
+  getUserDuelMatches(userId: number): Promise<DuelMatch[]>;
+  updateDuelMatch(id: number, matchData: Partial<DuelMatch>): Promise<DuelMatch | undefined>;
+  updateDuelMatchStatus(id: number, status: string): Promise<DuelMatch | undefined>;
+  setDuelMatchWinner(id: number, winnerId: number, scoreChange: number): Promise<DuelMatch | undefined>;
+  getActiveDuelMatch(userId: number): Promise<DuelMatch | undefined>;
+  
+  // Duel Images
+  createDuelImage(image: InsertDuelImage): Promise<DuelImage>;
+  getDuelImage(id: number): Promise<DuelImage | undefined>;
+  listDuelImages(): Promise<DuelImage[]>;
+  listEnabledDuelImages(): Promise<DuelImage[]>;
+  updateDuelImage(id: number, imageData: Partial<DuelImage>): Promise<DuelImage | undefined>;
+  deleteDuelImage(id: number): Promise<boolean>;
+  
+  // Duel Terminal Sessions
+  createDuelTerminalSession(session: InsertDuelTerminalSession): Promise<DuelTerminalSession>;
+  getDuelTerminalSession(id: number): Promise<DuelTerminalSession | undefined>;
+  getDuelTerminalSessionByToken(token: string): Promise<DuelTerminalSession | undefined>;
+  markTerminalSessionActive(id: number, active: boolean): Promise<DuelTerminalSession | undefined>;
+  updateTerminalSessionLastActivity(id: number): Promise<DuelTerminalSession | undefined>;
+  getUserActiveDuelTerminalSession(userId: number, matchId: number): Promise<DuelTerminalSession | undefined>;
+}
+
+export class MemStorage implements IStorage {
+  private users: Map<number, User>;
+  private teams: Map<number, Team>;
+  private categories: Map<number, Category>;
+  private challenges: Map<number, Challenge>;
+  private submissions: Map<number, Submission>;
+  private hintUnlocks: Map<number, HintUnlock>;
+  private competitions: Map<number, Competition>;
+  private competitionChallenges: Map<string, CompetitionChallenge>;
+  private teamJoinRequests: Map<number, TeamJoinRequest>;
+  
+  // Duel related maps
+  private usersDuelStats: Map<number, UsersDuelStats>;
+  private duelQueue: Map<number, DuelQueue>;
+  private duelChallenges: Map<number, DuelChallenge>;
+  private duelMatches: Map<number, DuelMatch>;
+  private duelMatchChallenges: Map<string, DuelMatchChallenge>;
+  private duelImages: Map<number, DuelImage>;
+  private duelTerminalSessions: Map<number, DuelTerminalSession>;
+  
+  private userIdCounter: number;
+  private teamIdCounter: number;
+  private categoryIdCounter: number;
+  private challengeIdCounter: number;
+  private submissionIdCounter: number;
+  private hintUnlockIdCounter: number;
+  private competitionIdCounter: number;
+  private teamJoinRequestIdCounter: number;
+  
+  // Duel related counters
+  private duelQueueIdCounter: number;
+  private duelChallengeIdCounter: number;
+  private duelMatchIdCounter: number;
+  private duelImageIdCounter: number;
+  private duelTerminalSessionIdCounter: number;
+  
+  constructor() {
+    this.users = new Map();
+    this.teams = new Map();
+    this.categories = new Map();
+    this.challenges = new Map();
+    this.submissions = new Map();
+    this.hintUnlocks = new Map();
+    this.competitions = new Map();
+    this.competitionChallenges = new Map();
+    this.teamJoinRequests = new Map();
+    
+    // Initialize duel maps
+    this.usersDuelStats = new Map();
+    this.duelQueue = new Map();
+    this.duelChallenges = new Map();
+    this.duelMatches = new Map();
+    this.duelMatchChallenges = new Map();
+    this.duelImages = new Map();
+    this.duelTerminalSessions = new Map();
+    
+    this.userIdCounter = 1;
+    this.teamIdCounter = 1;
+    this.categoryIdCounter = 1;
+    this.challengeIdCounter = 1;
+    this.submissionIdCounter = 1;
+    this.hintUnlockIdCounter = 1;
+    this.competitionIdCounter = 1;
+    this.teamJoinRequestIdCounter = 1;
+    
+    // Initialize duel counters
+    this.duelQueueIdCounter = 1;
+    this.duelChallengeIdCounter = 1;
+    this.duelMatchIdCounter = 1;
+    this.duelImageIdCounter = 1;
+    this.duelTerminalSessionIdCounter = 1;
+    
+    // Initialize with default categories
+    this.initializeDefaultData();
+  }
+  
+  private initializeDefaultData() {
+    // Add default categories
+    const categories = [
+      { name: "Web", color: "#00BCD4" },        // Cyan
+      { name: "Crypto", color: "#FF5722" },     // Orange
+      { name: "Forensics", color: "#00E676" },  // Green
+      { name: "Reversing", color: "#9C27B0" },  // Purple
+      { name: "Pwn", color: "#F44336" },        // Red
+      { name: "Misc", color: "#FF9800" }        // Amber/Orange
+    ];
+    
+    categories.forEach(cat => {
+      this.createCategory({
+        name: cat.name,
+        color: cat.color
+      });
+    });
+    
+    // Create default active competition
+    const now = new Date();
+    const end = new Date(now);
+    end.setDate(end.getDate() + 5);
+    
+    this.createCompetition({
+      name: "Summer CTF 2023",
+      description: "Annual summer capture the flag competition",
+      startTime: now,
+      endTime: end,
+      isActive: true
+    });
+  }
+
+  // User operations
+  async getUser(id: number): Promise<User | undefined> {
+    return this.users.get(id);
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => user.username.toLowerCase() === username.toLowerCase(),
+    );
+  }
+  
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => user.email.toLowerCase() === email.toLowerCase(),
+    );
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const id = this.userIdCounter++;
+    const user: User = { ...insertUser, id, isAdmin: false };
+    this.users.set(id, user);
+    return user;
+  }
+  
+  async updateUser(id: number, userData: Partial<User>): Promise<User | undefined> {
+    const user = await this.getUser(id);
+    if (!user) return undefined;
+    
+    const updatedUser = { ...user, ...userData };
+    this.users.set(id, updatedUser);
+    return updatedUser;
+  }
+  
+  async listUsers(): Promise<User[]> {
+    return Array.from(this.users.values());
+  }
+  
+  // Team operations
+  async getTeam(id: number): Promise<Team | undefined> {
+    return this.teams.get(id);
+  }
+  
+  async getTeamByName(name: string): Promise<Team | undefined> {
+    return Array.from(this.teams.values()).find(
+      (team) => team.name.toLowerCase() === name.toLowerCase(),
+    );
+  }
+  
+  async createTeam(team: InsertTeam): Promise<Team> {
+    const id = this.teamIdCounter++;
+    const newTeam: Team = { ...team, id };
+    this.teams.set(id, newTeam);
+    return newTeam;
+  }
+  
+  async updateTeam(id: number, teamData: Partial<Team>): Promise<Team | undefined> {
+    const team = await this.getTeam(id);
+    if (!team) return undefined;
+    
+    const updatedTeam = { ...team, ...teamData };
+    this.teams.set(id, updatedTeam);
+    return updatedTeam;
+  }
+  
+  async deleteTeam(id: number): Promise<boolean> {
+    return this.teams.delete(id);
+  }
+  
+  async listTeams(): Promise<Team[]> {
+    return Array.from(this.teams.values());
+  }
+  
+  async getTeamMembers(teamId: number): Promise<User[]> {
+    return Array.from(this.users.values()).filter(user => user.teamId === teamId);
+  }
+  
+  // Category operations
+  async getCategory(id: number): Promise<Category | undefined> {
+    return this.categories.get(id);
+  }
+  
+  async createCategory(category: InsertCategory): Promise<Category> {
+    const id = this.categoryIdCounter++;
+    const newCategory: Category = { ...category, id };
+    this.categories.set(id, newCategory);
+    return newCategory;
+  }
+  
+  async updateCategory(id: number, categoryData: Partial<Category>): Promise<Category | undefined> {
+    const category = await this.getCategory(id);
+    if (!category) return undefined;
+    
+    const updatedCategory = { ...category, ...categoryData };
+    this.categories.set(id, updatedCategory);
+    return updatedCategory;
+  }
+  
+  async listCategories(): Promise<Category[]> {
+    return Array.from(this.categories.values());
+  }
+  
+  // Challenge operations
+  async getChallenge(id: number): Promise<Challenge | undefined> {
+    return this.challenges.get(id);
+  }
+  
+  async createChallenge(challenge: InsertChallenge): Promise<Challenge> {
+    const id = this.challengeIdCounter++;
+    const newChallenge: Challenge = { ...challenge, id };
+    this.challenges.set(id, newChallenge);
+    return newChallenge;
+  }
+  
+  async updateChallenge(id: number, challengeData: Partial<Challenge>): Promise<Challenge | undefined> {
+    const challenge = await this.getChallenge(id);
+    if (!challenge) return undefined;
+    
+    const updatedChallenge = { ...challenge, ...challengeData };
+    this.challenges.set(id, updatedChallenge);
+    return updatedChallenge;
+  }
+  
+  async deleteChallenge(id: number): Promise<boolean> {
+    return this.challenges.delete(id);
+  }
+  
+  async listChallenges(): Promise<Challenge[]> {
+    return Array.from(this.challenges.values());
+  }
+  
+  async getChallengesByCategory(categoryId: number): Promise<Challenge[]> {
+    return Array.from(this.challenges.values()).filter(
+      challenge => challenge.categoryId === categoryId
+    );
+  }
+  
+  // Submission operations
+  async getSubmission(id: number): Promise<Submission | undefined> {
+    return this.submissions.get(id);
+  }
+  
+  async createSubmission(submission: InsertSubmission): Promise<Submission> {
+    const id = this.submissionIdCounter++;
+    // Check if this is the first solve for this challenge
+    const isFirstBlood = Array.from(this.submissions.values()).every(
+      s => s.challengeId !== submission.challengeId
+    );
+    
+    const now = new Date();
+    const newSubmission: Submission = { 
+      ...submission,
+      id,
+      submittedAt: now,
+      isFirstBlood
+    };
+    
+    this.submissions.set(id, newSubmission);
+    return newSubmission;
+  }
+  
+  async listSubmissionsByUser(userId: number): Promise<Submission[]> {
+    return Array.from(this.submissions.values()).filter(
+      submission => submission.userId === userId
+    );
+  }
+  
+  async listSubmissionsByTeam(teamId: number): Promise<Submission[]> {
+    return Array.from(this.submissions.values()).filter(
+      submission => submission.teamId === teamId
+    );
+  }
+  
+  async listSubmissionsByChallenge(challengeId: number): Promise<Submission[]> {
+    return Array.from(this.submissions.values()).filter(
+      submission => submission.challengeId === challengeId
+    );
+  }
+  
+  async isChallengeCompletedByUser(userId: number, challengeId: number): Promise<boolean> {
+    return Array.from(this.submissions.values()).some(
+      submission => submission.userId === userId && submission.challengeId === challengeId
+    );
+  }
+  
+  async isChallengeCompletedByTeam(teamId: number, challengeId: number): Promise<boolean> {
+    return Array.from(this.submissions.values()).some(
+      submission => submission.teamId === teamId && submission.challengeId === challengeId
+    );
+  }
+  
+  // Hint operations
+  async createHintUnlock(hintUnlock: InsertHintUnlock): Promise<HintUnlock> {
+    const id = this.hintUnlockIdCounter++;
+    const now = new Date();
+    const newHintUnlock: HintUnlock = { 
+      ...hintUnlock,
+      id,
+      unlockedAt: now
+    };
+    
+    this.hintUnlocks.set(id, newHintUnlock);
+    return newHintUnlock;
+  }
+  
+  async isHintUnlockedByUser(userId: number, challengeId: number): Promise<boolean> {
+    return Array.from(this.hintUnlocks.values()).some(
+      unlock => unlock.userId === userId && unlock.challengeId === challengeId
+    );
+  }
+  
+  async isHintUnlockedByTeam(teamId: number, challengeId: number): Promise<boolean> {
+    return Array.from(this.hintUnlocks.values()).some(
+      unlock => unlock.teamId === teamId && unlock.challengeId === challengeId
+    );
+  }
+  
+  // Competition operations
+  async getCompetition(id: number): Promise<Competition | undefined> {
+    return this.competitions.get(id);
+  }
+  
+  async getActiveCompetition(): Promise<Competition | undefined> {
+    return Array.from(this.competitions.values()).find(
+      competition => competition.isActive
+    );
+  }
+  
+  async createCompetition(competition: InsertCompetition): Promise<Competition> {
+    const id = this.competitionIdCounter++;
+    const newCompetition: Competition = { ...competition, id };
+    this.competitions.set(id, newCompetition);
+    return newCompetition;
+  }
+  
+  async updateCompetition(id: number, competitionData: Partial<Competition>): Promise<Competition | undefined> {
+    const competition = await this.getCompetition(id);
+    if (!competition) return undefined;
+    
+    const updatedCompetition = { ...competition, ...competitionData };
+    this.competitions.set(id, updatedCompetition);
+    return updatedCompetition;
+  }
+  
+  async addChallengeToCompetition(competitionId: number, challengeId: number): Promise<CompetitionChallenge> {
+    const key = `${competitionId}-${challengeId}`;
+    const competitionChallenge: CompetitionChallenge = {
+      competitionId,
+      challengeId
+    };
+    
+    this.competitionChallenges.set(key, competitionChallenge);
+    return competitionChallenge;
+  }
+  
+  // Team Join Request operations
+  async createTeamJoinRequest(request: InsertTeamJoinRequest): Promise<TeamJoinRequest> {
+    const id = this.teamJoinRequestIdCounter++;
+    const now = new Date();
+    const newRequest: TeamJoinRequest = { 
+      ...request,
+      id,
+      requestedAt: now,
+      status: "pending"
+    };
+    
+    this.teamJoinRequests.set(id, newRequest);
+    return newRequest;
+  }
+  
+  async updateTeamJoinRequest(id: number, status: string): Promise<TeamJoinRequest | undefined> {
+    const request = this.teamJoinRequests.get(id);
+    if (!request) return undefined;
+    
+    const updatedRequest: TeamJoinRequest = {
+      ...request,
+      status
+    };
+    
+    this.teamJoinRequests.set(id, updatedRequest);
+    return updatedRequest;
+  }
+  
+  async getTeamJoinRequests(teamId: number): Promise<TeamJoinRequest[]> {
+    return Array.from(this.teamJoinRequests.values()).filter(
+      request => request.teamId === teamId
+    );
+  }
+  
+  async getUserTeamJoinRequests(userId: number): Promise<TeamJoinRequest[]> {
+    return Array.from(this.teamJoinRequests.values()).filter(
+      request => request.userId === userId
+    );
+  }
+  
+  // Scoreboard operations
+  async getUserScore(userId: number): Promise<number> {
+    const userSubmissions = await this.listSubmissionsByUser(userId);
+    
+    let totalScore = 0;
+    for (const submission of userSubmissions) {
+      const challenge = await this.getChallenge(submission.challengeId);
+      if (challenge) {
+        totalScore += challenge.points;
+      }
+    }
+    
+    return totalScore;
+  }
+  
+  async getTeamScore(teamId: number): Promise<number> {
+    const teamSubmissions = await this.listSubmissionsByTeam(teamId);
+    
+    // Track which challenges have been solved to avoid double counting
+    const solvedChallenges = new Set<number>();
+    let totalScore = 0;
+    
+    for (const submission of teamSubmissions) {
+      if (!solvedChallenges.has(submission.challengeId)) {
+        const challenge = await this.getChallenge(submission.challengeId);
+        if (challenge) {
+          totalScore += challenge.points;
+          solvedChallenges.add(submission.challengeId);
+        }
+      }
+    }
+    
+    return totalScore;
+  }
+  
+  async getUserScoreboard(): Promise<{ userId: number, username: string, score: number }[]> {
+    const users = await this.listUsers();
+    const scoreboard = [];
+    
+    for (const user of users) {
+      const score = await this.getUserScore(user.id);
+      scoreboard.push({
+        userId: user.id,
+        username: user.username,
+        score
+      });
+    }
+    
+    return scoreboard.sort((a, b) => b.score - a.score);
+  }
+  
+  async getTeamScoreboard(): Promise<{ teamId: number, teamName: string, score: number }[]> {
+    const teams = await this.listTeams();
+    const scoreboard = [];
+    
+    for (const team of teams) {
+      const score = await this.getTeamScore(team.id);
+      scoreboard.push({
+        teamId: team.id,
+        teamName: team.name,
+        score
+      });
+    }
+    
+    return scoreboard.sort((a, b) => b.score - a.score);
+  }
+  
+  // Duel Stats Operations
+  async getDuelStats(userId: number): Promise<UsersDuelStats | undefined> {
+    return this.usersDuelStats.get(userId);
+  }
+  
+  async createDuelStats(stats: InsertUsersDuelStats): Promise<UsersDuelStats> {
+    // Usamos userId como el id primario
+    const newStats: UsersDuelStats = {
+      ...stats,
+      duelLastPlayed: stats.duelLastPlayed || null
+    };
+    
+    this.usersDuelStats.set(stats.userId, newStats);
+    return newStats;
+  }
+  
+  async updateDuelStats(userId: number, win: boolean, ratingChange: number): Promise<UsersDuelStats | undefined> {
+    let stats = await this.getDuelStats(userId);
+    
+    if (!stats) {
+      // Si no hay estadísticas, crearlas con valores iniciales
+      stats = await this.createDuelStats({
+        userId,
+        duelWins: 0,
+        duelLosses: 0,
+        duelRating: 1000
+      });
+    }
+    
+    const now = new Date();
+    const updatedStats: UsersDuelStats = {
+      ...stats,
+      duelWins: win ? stats.duelWins + 1 : stats.duelWins,
+      duelLosses: win ? stats.duelLosses : stats.duelLosses + 1,
+      duelRating: stats.duelRating + (win ? Math.abs(ratingChange) : -Math.abs(ratingChange)),
+      duelLastPlayed: now
+    };
+    
+    this.usersDuelStats.set(userId, updatedStats);
+    return updatedStats;
+  }
+  
+  async getDuelLeaderboard(): Promise<{ userId: number, username: string, rating: number, wins: number, losses: number }[]> {
+    const users = await this.listUsers();
+    const leaderboard = [];
+    
+    for (const user of users) {
+      const stats = await this.getDuelStats(user.id);
+      
+      if (stats) {
+        leaderboard.push({
+          userId: user.id,
+          username: user.username,
+          rating: stats.duelRating,
+          wins: stats.duelWins,
+          losses: stats.duelLosses
+        });
+      }
+    }
+    
+    return leaderboard.sort((a, b) => b.rating - a.rating);
+  }
+  
+  // Duel Queue Operations
+  async addToQueue(userId: number): Promise<DuelQueue> {
+    // Verificar si el usuario ya está en la cola
+    if (await this.isUserInQueue(userId)) {
+      // Si ya está en la cola, devolver la entrada existente
+      return Array.from(this.duelQueue.values()).find(entry => entry.userId === userId)!;
+    }
+    
+    const id = this.duelQueueIdCounter++;
+    const now = new Date();
+    const queueEntry: DuelQueue = {
+      id,
+      userId,
+      joinedAt: now
+    };
+    
+    this.duelQueue.set(id, queueEntry);
+    return queueEntry;
+  }
+  
+  async removeFromQueue(userId: number): Promise<boolean> {
+    const queueEntry = Array.from(this.duelQueue.values()).find(entry => entry.userId === userId);
+    
+    if (queueEntry) {
+      return this.duelQueue.delete(queueEntry.id);
+    }
+    
+    return false;
+  }
+  
+  async isUserInQueue(userId: number): Promise<boolean> {
+    return Array.from(this.duelQueue.values()).some(entry => entry.userId === userId);
+  }
+  
+  async getQueuedUsers(): Promise<DuelQueue[]> {
+    return Array.from(this.duelQueue.values()).sort((a, b) => 
+      a.joinedAt.getTime() - b.joinedAt.getTime()
+    );
+  }
+  
+  async matchUsersFromQueue(): Promise<{ player1Id: number, player2Id: number } | null> {
+    const queuedUsers = await this.getQueuedUsers();
+    
+    if (queuedUsers.length < 2) {
+      return null;
+    }
+    
+    // Tomar los dos primeros usuarios en la cola (FIFO)
+    const [player1, player2] = queuedUsers;
+    
+    // Eliminar a los jugadores de la cola
+    await this.removeFromQueue(player1.userId);
+    await this.removeFromQueue(player2.userId);
+    
+    return {
+      player1Id: player1.userId,
+      player2Id: player2.userId
+    };
+  }
+  
+  // Duel Challenge Operations
+  async createDuelChallenge(challenge: InsertDuelChallenge): Promise<DuelChallenge> {
+    const id = this.duelChallengeIdCounter++;
+    const now = new Date();
+    
+    const newChallenge: DuelChallenge = {
+      ...challenge,
+      id,
+      status: "pending",
+      createdAt: now
+    };
+    
+    this.duelChallenges.set(id, newChallenge);
+    return newChallenge;
+  }
+  
+  async getDuelChallenge(id: number): Promise<DuelChallenge | undefined> {
+    return this.duelChallenges.get(id);
+  }
+  
+  async getUserDuelChallenges(userId: number): Promise<DuelChallenge[]> {
+    return Array.from(this.duelChallenges.values()).filter(
+      challenge => challenge.challengerId === userId || challenge.challengedId === userId
+    );
+  }
+  
+  async updateDuelChallengeStatus(id: number, status: string): Promise<DuelChallenge | undefined> {
+    const challenge = await this.getDuelChallenge(id);
+    if (!challenge) return undefined;
+    
+    const updatedChallenge: DuelChallenge = {
+      ...challenge,
+      status
+    };
+    
+    this.duelChallenges.set(id, updatedChallenge);
+    return updatedChallenge;
+  }
+  
+  // Duel Match Operations
+  async createDuelMatch(match: InsertDuelMatch): Promise<DuelMatch> {
+    const id = this.duelMatchIdCounter++;
+    const now = new Date();
+    
+    const newMatch: DuelMatch = {
+      ...match,
+      id,
+      status: "preparing",
+      startedAt: now,
+      endedAt: null,
+      winnerId: null,
+      duelImageId: null,
+      containerData: null,
+      scoreChange: null,
+      logs: null,
+      webTerminalEnabled: false
+    };
+    
+    this.duelMatches.set(id, newMatch);
+    return newMatch;
+  }
+  
+  async getDuelMatch(id: number): Promise<DuelMatch | undefined> {
+    return this.duelMatches.get(id);
+  }
+  
+  async getUserDuelMatches(userId: number): Promise<DuelMatch[]> {
+    return Array.from(this.duelMatches.values()).filter(
+      match => match.player1Id === userId || match.player2Id === userId
+    );
+  }
+  
+  async updateDuelMatch(id: number, matchData: Partial<DuelMatch>): Promise<DuelMatch | undefined> {
+    const match = await this.getDuelMatch(id);
+    if (!match) return undefined;
+    
+    const updatedMatch: DuelMatch = {
+      ...match,
+      ...matchData
+    };
+    
+    this.duelMatches.set(id, updatedMatch);
+    return updatedMatch;
+  }
+  
+  async updateDuelMatchStatus(id: number, status: string): Promise<DuelMatch | undefined> {
+    const match = await this.getDuelMatch(id);
+    if (!match) return undefined;
+    
+    const updatedMatch: DuelMatch = {
+      ...match,
+      status
+    };
+    
+    this.duelMatches.set(id, updatedMatch);
+    return updatedMatch;
+  }
+  
+  async setDuelMatchWinner(id: number, winnerId: number, scoreChange: number): Promise<DuelMatch | undefined> {
+    const match = await this.getDuelMatch(id);
+    if (!match) return undefined;
+    
+    const now = new Date();
+    const winnerStatus = match.player1Id === winnerId ? "player1_victory" : "player2_victory";
+    
+    const updatedMatch: DuelMatch = {
+      ...match,
+      status: winnerStatus,
+      endedAt: now,
+      winnerId,
+      scoreChange
+    };
+    
+    this.duelMatches.set(id, updatedMatch);
+    
+    // Actualizar estadísticas de los jugadores
+    const loserId = match.player1Id === winnerId ? match.player2Id : match.player1Id;
+    await this.updateDuelStats(winnerId, true, scoreChange);
+    await this.updateDuelStats(loserId, false, scoreChange);
+    
+    return updatedMatch;
+  }
+  
+  async getActiveDuelMatch(userId: number): Promise<DuelMatch | undefined> {
+    const activeStates = ["preparing", "in_progress"];
+    
+    return Array.from(this.duelMatches.values()).find(
+      match => 
+        (match.player1Id === userId || match.player2Id === userId) && 
+        activeStates.includes(match.status)
+    );
+  }
+  
+  // Duel Images Operations
+  async createDuelImage(image: InsertDuelImage): Promise<DuelImage> {
+    const id = this.duelImageIdCounter++;
+    const now = new Date();
+    
+    const newImage: DuelImage = {
+      ...image,
+      id,
+      createdAt: now
+    };
+    
+    this.duelImages.set(id, newImage);
+    return newImage;
+  }
+  
+  async getDuelImage(id: number): Promise<DuelImage | undefined> {
+    return this.duelImages.get(id);
+  }
+  
+  async listDuelImages(): Promise<DuelImage[]> {
+    return Array.from(this.duelImages.values());
+  }
+  
+  async listEnabledDuelImages(): Promise<DuelImage[]> {
+    return Array.from(this.duelImages.values()).filter(
+      image => image.isEnabled
+    );
+  }
+  
+  async updateDuelImage(id: number, imageData: Partial<DuelImage>): Promise<DuelImage | undefined> {
+    const image = await this.getDuelImage(id);
+    if (!image) return undefined;
+    
+    const updatedImage: DuelImage = {
+      ...image,
+      ...imageData
+    };
+    
+    this.duelImages.set(id, updatedImage);
+    return updatedImage;
+  }
+  
+  async deleteDuelImage(id: number): Promise<boolean> {
+    return this.duelImages.delete(id);
+  }
+  
+  // Duel Terminal Sessions Operations
+  async createDuelTerminalSession(session: InsertDuelTerminalSession): Promise<DuelTerminalSession> {
+    const id = this.duelTerminalSessionIdCounter++;
+    const now = new Date();
+    
+    const newSession: DuelTerminalSession = {
+      ...session,
+      id,
+      createdAt: now,
+      lastActivityAt: now
+    };
+    
+    this.duelTerminalSessions.set(id, newSession);
+    return newSession;
+  }
+  
+  async getDuelTerminalSession(id: number): Promise<DuelTerminalSession | undefined> {
+    return this.duelTerminalSessions.get(id);
+  }
+  
+  async getDuelTerminalSessionByToken(token: string): Promise<DuelTerminalSession | undefined> {
+    return Array.from(this.duelTerminalSessions.values()).find(
+      session => session.token === token
+    );
+  }
+  
+  async markTerminalSessionActive(id: number, active: boolean): Promise<DuelTerminalSession | undefined> {
+    const session = await this.getDuelTerminalSession(id);
+    if (!session) return undefined;
+    
+    const updatedSession: DuelTerminalSession = {
+      ...session,
+      isActive: active
+    };
+    
+    this.duelTerminalSessions.set(id, updatedSession);
+    return updatedSession;
+  }
+  
+  async updateTerminalSessionLastActivity(id: number): Promise<DuelTerminalSession | undefined> {
+    const session = await this.getDuelTerminalSession(id);
+    if (!session) return undefined;
+    
+    const updatedSession: DuelTerminalSession = {
+      ...session,
+      lastActivityAt: new Date()
+    };
+    
+    this.duelTerminalSessions.set(id, updatedSession);
+    return updatedSession;
+  }
+  
+  async getUserActiveDuelTerminalSession(userId: number, matchId: number): Promise<DuelTerminalSession | undefined> {
+    return Array.from(this.duelTerminalSessions.values()).find(
+      session => 
+        session.userId === userId && 
+        session.matchId === matchId && 
+        session.isActive
+    );
+  }
+}
+
+import session from "express-session";
+import connectPg from "connect-pg-simple";
+import { db } from "./db";
+import { and, asc, desc, eq, gte, lte, inArray, or } from "drizzle-orm";
+
+// Setup PostgreSQL session store
+const PostgresStore = connectPg(session);
+
+export class DatabaseStorage implements IStorage {
+  sessionStore: any; // Using any for sessionStore to avoid type errors
+
+  constructor() {
+    // Setup session store using PostgreSQL
+    this.sessionStore = new PostgresStore({
+      conObject: {
+        connectionString: process.env.DATABASE_URL,
+      },
+      createTableIfMissing: true,
+    });
+    this.initializeDefaultData();
+  }
+
+  private async initializeDefaultData() {
+    try {
+      // Check if categories exist
+      const existingCategories = await db.select().from(categories);
+      
+      if (existingCategories.length === 0) {
+        // Sample categories
+        await db.insert(categories).values([
+          { name: "Web", color: "#00BCD4" },
+          { name: "Crypto", color: "#FF5722" },
+          { name: "Forensics", color: "#00E676" },
+          { name: "Reversing", color: "#9C27B0" },
+          { name: "Pwn", color: "#F44336" },
+          { name: "Misc", color: "#FF9800" }
+        ]);
+      }
+
+      // Create default active competition if none exists
+      const existingCompetitions = await db.select().from(competitions);
+      
+      if (existingCompetitions.length === 0) {
+        const now = new Date();
+        const end = new Date(now);
+        end.setDate(end.getDate() + 5);
+        
+        await db.insert(competitions).values([{
+          name: "Summer CTF 2023",
+          description: "Annual summer capture the flag competition",
+          startTime: now,
+          endTime: end,
+          isActive: true
+        }]);
+      }
+    } catch (error) {
+      console.error("Error initializing default data:", error);
+    }
+  }
+
+  // User operations
+  async getUser(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    // Ensure all required fields (including null fields) are properly set
+    const userData = {
+      ...insertUser,
+      teamId: null, // Set explicit null for teamId
+      bio: insertUser.bio || null,
+      avatarColor: insertUser.avatarColor || null,
+      isAdmin: insertUser.isAdmin !== undefined ? insertUser.isAdmin : false
+    };
+    
+    const [user] = await db.insert(users).values(userData).returning();
+    return user;
+  }
+
+  async updateUser(id: number, userData: Partial<User>): Promise<User | undefined> {
+    const [updatedUser] = await db
+      .update(users)
+      .set(userData)
+      .where(eq(users.id, id))
+      .returning();
+    
+    return updatedUser;
+  }
+
+  async listUsers(): Promise<User[]> {
+    return await db.select().from(users);
+  }
+
+  // Team operations
+  async getTeam(id: number): Promise<Team | undefined> {
+    const [team] = await db.select().from(teams).where(eq(teams.id, id));
+    return team;
+  }
+
+  async getTeamByName(name: string): Promise<Team | undefined> {
+    const [team] = await db.select().from(teams).where(eq(teams.name, name));
+    return team;
+  }
+
+  async createTeam(team: InsertTeam): Promise<Team> {
+    // Ensure all required fields (including null fields) are properly set
+    const teamData = {
+      ...team,
+      description: team.description || null
+    };
+    
+    const [newTeam] = await db.insert(teams).values(teamData).returning();
+    return newTeam;
+  }
+
+  async updateTeam(id: number, teamData: Partial<Team>): Promise<Team | undefined> {
+    const [updatedTeam] = await db
+      .update(teams)
+      .set(teamData)
+      .where(eq(teams.id, id))
+      .returning();
+    
+    return updatedTeam;
+  }
+
+  async deleteTeam(id: number): Promise<boolean> {
+    const result = await db.delete(teams).where(eq(teams.id, id));
+    return result.count > 0;
+  }
+
+  async listTeams(): Promise<Team[]> {
+    return await db.select().from(teams);
+  }
+
+  async getTeamMembers(teamId: number): Promise<User[]> {
+    return await db.select().from(users).where(eq(users.teamId, teamId));
+  }
+
+  // Category operations
+  async getCategory(id: number): Promise<Category | undefined> {
+    const [category] = await db.select().from(categories).where(eq(categories.id, id));
+    return category;
+  }
+
+  async createCategory(category: InsertCategory): Promise<Category> {
+    const [newCategory] = await db.insert(categories).values(category).returning();
+    return newCategory;
+  }
+
+  async updateCategory(id: number, categoryData: Partial<Category>): Promise<Category | undefined> {
+    const [updatedCategory] = await db
+      .update(categories)
+      .set(categoryData)
+      .where(eq(categories.id, id))
+      .returning();
+    
+    return updatedCategory;
+  }
+
+  async listCategories(): Promise<Category[]> {
+    return await db.select().from(categories);
+  }
+
+  // Challenge operations
+  async getChallenge(id: number): Promise<Challenge | undefined> {
+    const [challenge] = await db.select().from(challenges).where(eq(challenges.id, id));
+    return challenge;
+  }
+
+  async createChallenge(challenge: InsertChallenge): Promise<Challenge> {
+    // Ensure all required fields (including null fields) are properly set
+    const challengeData = {
+      ...challenge,
+      resourceUrl: challenge.resourceUrl || null,
+      hintText: challenge.hintText || null,
+      hintCost: challenge.hintCost || null
+    };
+    
+    const [newChallenge] = await db.insert(challenges).values(challengeData).returning();
+    return newChallenge;
+  }
+
+  async updateChallenge(id: number, challengeData: Partial<Challenge>): Promise<Challenge | undefined> {
+    const [updatedChallenge] = await db
+      .update(challenges)
+      .set(challengeData)
+      .where(eq(challenges.id, id))
+      .returning();
+    
+    return updatedChallenge;
+  }
+
+  async deleteChallenge(id: number): Promise<boolean> {
+    const result = await db.delete(challenges).where(eq(challenges.id, id));
+    return result.count > 0;
+  }
+
+  async listChallenges(): Promise<Challenge[]> {
+    return await db.select().from(challenges);
+  }
+
+  async getChallengesByCategory(categoryId: number): Promise<Challenge[]> {
+    return await db.select().from(challenges).where(eq(challenges.categoryId, categoryId));
+  }
+
+  // Submission operations
+  async getSubmission(id: number): Promise<Submission | undefined> {
+    const [submission] = await db.select().from(submissions).where(eq(submissions.id, id));
+    return submission;
+  }
+
+  async createSubmission(submission: InsertSubmission): Promise<Submission> {
+    // Check if this is the first solve for this challenge
+    const existingSubmissions = await db
+      .select()
+      .from(submissions)
+      .where(eq(submissions.challengeId, submission.challengeId));
+    
+    const isFirstBlood = existingSubmissions.length === 0;
+    
+    const [newSubmission] = await db
+      .insert(submissions)
+      .values({
+        ...submission,
+        teamId: submission.teamId || null,
+        submittedAt: new Date(),
+        isFirstBlood
+      })
+      .returning();
+    
+    return newSubmission;
+  }
+
+  async listSubmissionsByUser(userId: number): Promise<Submission[]> {
+    return await db
+      .select()
+      .from(submissions)
+      .where(eq(submissions.userId, userId));
+  }
+
+  async listSubmissionsByTeam(teamId: number): Promise<Submission[]> {
+    return await db
+      .select()
+      .from(submissions)
+      .where(eq(submissions.teamId, teamId));
+  }
+
+  async listSubmissionsByChallenge(challengeId: number): Promise<Submission[]> {
+    return await db
+      .select()
+      .from(submissions)
+      .where(eq(submissions.challengeId, challengeId));
+  }
+
+  async isChallengeCompletedByUser(userId: number, challengeId: number): Promise<boolean> {
+    const [submission] = await db
+      .select()
+      .from(submissions)
+      .where(
+        and(
+          eq(submissions.userId, userId),
+          eq(submissions.challengeId, challengeId)
+        )
+      );
+    
+    return !!submission;
+  }
+
+  async isChallengeCompletedByTeam(teamId: number, challengeId: number): Promise<boolean> {
+    const [submission] = await db
+      .select()
+      .from(submissions)
+      .where(
+        and(
+          eq(submissions.teamId, teamId),
+          eq(submissions.challengeId, challengeId)
+        )
+      );
+    
+    return !!submission;
+  }
+
+  // Hint operations
+  async createHintUnlock(hintUnlock: InsertHintUnlock): Promise<HintUnlock> {
+    const [newHintUnlock] = await db
+      .insert(hintUnlocks)
+      .values({
+        ...hintUnlock,
+        teamId: hintUnlock.teamId || null,
+        unlockedAt: new Date()
+      })
+      .returning();
+    
+    return newHintUnlock;
+  }
+
+  async isHintUnlockedByUser(userId: number, challengeId: number): Promise<boolean> {
+    const [hintUnlock] = await db
+      .select()
+      .from(hintUnlocks)
+      .where(
+        and(
+          eq(hintUnlocks.userId, userId),
+          eq(hintUnlocks.challengeId, challengeId)
+        )
+      );
+    
+    return !!hintUnlock;
+  }
+
+  async isHintUnlockedByTeam(teamId: number, challengeId: number): Promise<boolean> {
+    const [hintUnlock] = await db
+      .select()
+      .from(hintUnlocks)
+      .where(
+        and(
+          eq(hintUnlocks.teamId, teamId),
+          eq(hintUnlocks.challengeId, challengeId)
+        )
+      );
+    
+    return !!hintUnlock;
+  }
+
+  // Competition operations
+  async getCompetition(id: number): Promise<Competition | undefined> {
+    const [competition] = await db
+      .select()
+      .from(competitions)
+      .where(eq(competitions.id, id));
+    
+    return competition;
+  }
+
+  async getActiveCompetition(): Promise<Competition | undefined> {
+    const [competition] = await db
+      .select()
+      .from(competitions)
+      .where(eq(competitions.isActive, true));
+    
+    return competition;
+  }
+
+  async createCompetition(competition: InsertCompetition): Promise<Competition> {
+    // Ensure all required fields (including null fields) are properly set
+    const competitionData = {
+      ...competition,
+      description: competition.description || null,
+      isActive: competition.isActive !== undefined ? competition.isActive : false
+    };
+    
+    const [newCompetition] = await db
+      .insert(competitions)
+      .values(competitionData)
+      .returning();
+    
+    return newCompetition;
+  }
+
+  async updateCompetition(id: number, competitionData: Partial<Competition>): Promise<Competition | undefined> {
+    const [updatedCompetition] = await db
+      .update(competitions)
+      .set(competitionData)
+      .where(eq(competitions.id, id))
+      .returning();
+    
+    return updatedCompetition;
+  }
+
+  async addChallengeToCompetition(competitionId: number, challengeId: number): Promise<CompetitionChallenge> {
+    const [competitionChallenge] = await db
+      .insert(competitionChallenges)
+      .values({ competitionId, challengeId })
+      .returning();
+    
+    return competitionChallenge;
+  }
+
+  // Team Join Request operations
+  async createTeamJoinRequest(request: InsertTeamJoinRequest): Promise<TeamJoinRequest> {
+    const [newRequest] = await db
+      .insert(teamJoinRequests)
+      .values({
+        ...request,
+        requestedAt: new Date(),
+        status: "pending"
+      })
+      .returning();
+    
+    return newRequest;
+  }
+
+  async updateTeamJoinRequest(id: number, status: string): Promise<TeamJoinRequest | undefined> {
+    const [updatedRequest] = await db
+      .update(teamJoinRequests)
+      .set({ status })
+      .where(eq(teamJoinRequests.id, id))
+      .returning();
+    
+    return updatedRequest;
+  }
+
+  async getTeamJoinRequests(teamId: number): Promise<TeamJoinRequest[]> {
+    return await db
+      .select()
+      .from(teamJoinRequests)
+      .where(
+        and(
+          eq(teamJoinRequests.teamId, teamId),
+          eq(teamJoinRequests.status, "pending")
+        )
+      );
+  }
+
+  async getUserTeamJoinRequests(userId: number): Promise<TeamJoinRequest[]> {
+    return await db
+      .select()
+      .from(teamJoinRequests)
+      .where(eq(teamJoinRequests.userId, userId));
+  }
+
+  // Scoreboard operations
+  async getUserScore(userId: number): Promise<number> {
+    const userSubmissions = await this.listSubmissionsByUser(userId);
+    
+    // Create array of unique challenge IDs
+    const challengeIdsMap: {[key: number]: boolean} = {};
+    userSubmissions.forEach(submission => {
+      challengeIdsMap[submission.challengeId] = true;
+    });
+    
+    const challengeIds = Object.keys(challengeIdsMap).map(id => parseInt(id));
+    
+    // Get score from challenges
+    let totalScore = 0;
+    for (const challengeId of challengeIds) {
+      const challenge = await this.getChallenge(challengeId);
+      if (challenge) {
+        totalScore += challenge.points;
+      }
+    }
+    
+    return totalScore;
+  }
+
+  async getTeamScore(teamId: number): Promise<number> {
+    const teamSubmissions = await this.listSubmissionsByTeam(teamId);
+    
+    // Create array of unique challenge IDs
+    const challengeIdsMap: {[key: number]: boolean} = {};
+    teamSubmissions.forEach(submission => {
+      challengeIdsMap[submission.challengeId] = true;
+    });
+    
+    const challengeIds = Object.keys(challengeIdsMap).map(id => parseInt(id));
+    
+    // Get score from challenges
+    let totalScore = 0;
+    for (const challengeId of challengeIds) {
+      const challenge = await this.getChallenge(challengeId);
+      if (challenge) {
+        totalScore += challenge.points;
+      }
+    }
+    
+    return totalScore;
+  }
+
+  async getUserScoreboard(): Promise<{ userId: number, username: string, score: number }[]> {
+    const allUsers = await this.listUsers();
+    const scoreboard = [];
+    
+    for (const user of allUsers) {
+      const score = await this.getUserScore(user.id);
+      scoreboard.push({
+        userId: user.id,
+        username: user.username,
+        score
+      });
+    }
+    
+    // Sort by score (descending)
+    return scoreboard.sort((a, b) => b.score - a.score);
+  }
+
+  async getTeamScoreboard(): Promise<{ teamId: number, teamName: string, score: number }[]> {
+    const allTeams = await this.listTeams();
+    const scoreboard = [];
+    
+    for (const team of allTeams) {
+      const score = await this.getTeamScore(team.id);
+      scoreboard.push({
+        teamId: team.id,
+        teamName: team.name,
+        score
+      });
+    }
+    
+    // Sort by score (descending)
+    return scoreboard.sort((a, b) => b.score - a.score);
+  }
+  
+  // Duel Stats Operations
+  async getDuelStats(userId: number): Promise<UsersDuelStats | undefined> {
+    const [stats] = await db.select().from(usersDuelStats).where(eq(usersDuelStats.userId, userId));
+    return stats;
+  }
+  
+  async createDuelStats(stats: InsertUsersDuelStats): Promise<UsersDuelStats> {
+    const [newStats] = await db.insert(usersDuelStats).values(stats).returning();
+    return newStats;
+  }
+  
+  async updateDuelStats(userId: number, win: boolean, ratingChange: number): Promise<UsersDuelStats | undefined> {
+    // Verificar si existen estadísticas para el usuario
+    const existingStats = await this.getDuelStats(userId);
+    
+    if (!existingStats) {
+      // Si no hay estadísticas, crearlas con valores iniciales
+      return this.createDuelStats({
+        userId,
+        duelWins: win ? 1 : 0,
+        duelLosses: win ? 0 : 1,
+        duelRating: 1000 + (win ? Math.abs(ratingChange) : -Math.abs(ratingChange)),
+        duelLastPlayed: new Date()
+      });
+    } else {
+      // Actualizar estadísticas existentes
+      const [updatedStats] = await db
+        .update(usersDuelStats)
+        .set({
+          duelWins: win ? existingStats.duelWins + 1 : existingStats.duelWins,
+          duelLosses: win ? existingStats.duelLosses : existingStats.duelLosses + 1,
+          duelRating: existingStats.duelRating + (win ? Math.abs(ratingChange) : -Math.abs(ratingChange)),
+          duelLastPlayed: new Date()
+        })
+        .where(eq(usersDuelStats.userId, userId))
+        .returning();
+        
+      return updatedStats;
+    }
+  }
+  
+  async getDuelLeaderboard(): Promise<{ userId: number, username: string, rating: number, wins: number, losses: number }[]> {
+    // Obtener estadísticas de duelo y unirlas con la información de usuario
+    const result = await db
+      .select({
+        userId: usersDuelStats.userId,
+        rating: usersDuelStats.duelRating,
+        wins: usersDuelStats.duelWins,
+        losses: usersDuelStats.duelLosses,
+        username: users.username
+      })
+      .from(usersDuelStats)
+      .innerJoin(users, eq(usersDuelStats.userId, users.id))
+      .orderBy(desc(usersDuelStats.duelRating));
+      
+    return result;
+  }
+  
+  // Duel Queue Operations
+  async addToQueue(userId: number): Promise<DuelQueue> {
+    // Verificar si el usuario ya está en la cola
+    if (await this.isUserInQueue(userId)) {
+      // Si ya está en la cola, devolver la entrada existente
+      const [existingEntry] = await db
+        .select()
+        .from(duelQueue)
+        .where(eq(duelQueue.userId, userId));
+        
+      return existingEntry;
+    }
+    
+    // Añadir a la cola
+    const [entry] = await db
+      .insert(duelQueue)
+      .values({
+        userId,
+        joinedAt: new Date()
+      })
+      .returning();
+      
+    return entry;
+  }
+  
+  async removeFromQueue(userId: number): Promise<boolean> {
+    const result = await db
+      .delete(duelQueue)
+      .where(eq(duelQueue.userId, userId));
+      
+    return result.count > 0;
+  }
+  
+  async isUserInQueue(userId: number): Promise<boolean> {
+    const [entry] = await db
+      .select()
+      .from(duelQueue)
+      .where(eq(duelQueue.userId, userId));
+      
+    return !!entry;
+  }
+  
+  async getQueuedUsers(): Promise<DuelQueue[]> {
+    return await db
+      .select()
+      .from(duelQueue)
+      .orderBy(asc(duelQueue.joinedAt));
+  }
+  
+  async matchUsersFromQueue(): Promise<{ player1Id: number, player2Id: number } | null> {
+    const queuedUsers = await this.getQueuedUsers();
+    
+    if (queuedUsers.length < 2) {
+      return null;
+    }
+    
+    // Tomar los dos primeros usuarios de la cola
+    const [player1, player2] = queuedUsers;
+    
+    // Eliminar a los jugadores de la cola
+    await this.removeFromQueue(player1.userId);
+    await this.removeFromQueue(player2.userId);
+    
+    return {
+      player1Id: player1.userId,
+      player2Id: player2.userId
+    };
+  }
+  
+  // Duel Challenge Operations
+  async createDuelChallenge(challenge: InsertDuelChallenge): Promise<DuelChallenge> {
+    const [newChallenge] = await db
+      .insert(duelChallenges)
+      .values({
+        ...challenge,
+        status: "pending",
+        createdAt: new Date()
+      })
+      .returning();
+      
+    return newChallenge;
+  }
+  
+  async getDuelChallenge(id: number): Promise<DuelChallenge | undefined> {
+    const [challenge] = await db
+      .select()
+      .from(duelChallenges)
+      .where(eq(duelChallenges.id, id));
+      
+    return challenge;
+  }
+  
+  async getUserDuelChallenges(userId: number): Promise<DuelChallenge[]> {
+    return await db
+      .select()
+      .from(duelChallenges)
+      .where(
+        or(
+          eq(duelChallenges.challengerId, userId),
+          eq(duelChallenges.challengedId, userId)
+        )
+      );
+  }
+  
+  async updateDuelChallengeStatus(id: number, status: string): Promise<DuelChallenge | undefined> {
+    const [updatedChallenge] = await db
+      .update(duelChallenges)
+      .set({ status })
+      .where(eq(duelChallenges.id, id))
+      .returning();
+      
+    return updatedChallenge;
+  }
+  
+  // Duel Match Operations
+  async createDuelMatch(match: InsertDuelMatch): Promise<DuelMatch> {
+    const [newMatch] = await db
+      .insert(duelMatches)
+      .values({
+        ...match,
+        status: "preparing",
+        startedAt: new Date(),
+        endedAt: null,
+        winnerId: null,
+        duelImageId: null,
+        containerData: null,
+        scoreChange: null,
+        logs: null,
+        webTerminalEnabled: false
+      })
+      .returning();
+      
+    return newMatch;
+  }
+  
+  async getDuelMatch(id: number): Promise<DuelMatch | undefined> {
+    const [match] = await db
+      .select()
+      .from(duelMatches)
+      .where(eq(duelMatches.id, id));
+      
+    return match;
+  }
+  
+  async getUserDuelMatches(userId: number): Promise<DuelMatch[]> {
+    return await db
+      .select()
+      .from(duelMatches)
+      .where(
+        or(
+          eq(duelMatches.player1Id, userId),
+          eq(duelMatches.player2Id, userId)
+        )
+      );
+  }
+  
+  async updateDuelMatch(id: number, matchData: Partial<DuelMatch>): Promise<DuelMatch | undefined> {
+    const [updatedMatch] = await db
+      .update(duelMatches)
+      .set(matchData)
+      .where(eq(duelMatches.id, id))
+      .returning();
+      
+    return updatedMatch;
+  }
+  
+  async updateDuelMatchStatus(id: number, status: string): Promise<DuelMatch | undefined> {
+    const [updatedMatch] = await db
+      .update(duelMatches)
+      .set({ status })
+      .where(eq(duelMatches.id, id))
+      .returning();
+      
+    return updatedMatch;
+  }
+  
+  async setDuelMatchWinner(id: number, winnerId: number, scoreChange: number): Promise<DuelMatch | undefined> {
+    const match = await this.getDuelMatch(id);
+    if (!match) return undefined;
+    
+    const winnerStatus = match.player1Id === winnerId ? "player1_victory" : "player2_victory";
+    
+    const [updatedMatch] = await db
+      .update(duelMatches)
+      .set({
+        status: winnerStatus,
+        endedAt: new Date(),
+        winnerId,
+        scoreChange
+      })
+      .where(eq(duelMatches.id, id))
+      .returning();
+      
+    // Actualizar estadísticas de los jugadores
+    const loserId = match.player1Id === winnerId ? match.player2Id : match.player1Id;
+    await this.updateDuelStats(winnerId, true, scoreChange);
+    await this.updateDuelStats(loserId, false, scoreChange);
+    
+    return updatedMatch;
+  }
+  
+  async getActiveDuelMatch(userId: number): Promise<DuelMatch | undefined> {
+    const activeStates = ["preparing", "in_progress"];
+    
+    const [match] = await db
+      .select()
+      .from(duelMatches)
+      .where(
+        and(
+          or(
+            eq(duelMatches.player1Id, userId),
+            eq(duelMatches.player2Id, userId)
+          ),
+          inArray(duelMatches.status, activeStates)
+        )
+      );
+      
+    return match;
+  }
+}
+
+// Uncomment the line below to use DatabaseStorage instead of MemStorage
+// export const storage = new DatabaseStorage();
+
+  private async initializeDefaultData() {
+    try {
+      // Check if categories exist
+      const existingCategories = await db.select().from(categories);
+      
+      if (existingCategories.length === 0) {
+        // Sample categories
+        await db.insert(categories).values([
+          { name: "Web", color: "#00BCD4" },
+          { name: "Crypto", color: "#FF5722" },
+          { name: "Forensics", color: "#00E676" },
+          { name: "Reversing", color: "#9C27B0" },
+          { name: "Pwn", color: "#F44336" },
+          { name: "Misc", color: "#FF9800" }
+        ]);
+      }
+
+      // Create default active competition if none exists
+      const existingCompetitions = await db.select().from(competitions);
+      
+      if (existingCompetitions.length === 0) {
+        const now = new Date();
+        const end = new Date(now);
+        end.setDate(end.getDate() + 5);
+        
+        await db.insert(competitions).values([{
+          name: "Summer CTF 2023",
+          description: "Annual summer capture the flag competition",
+          startTime: now,
+          endTime: end,
+          isActive: true
+        }]);
+      }
+    } catch (error) {
+      console.error("Error initializing default data:", error);
+    }
+  }
+
+  // User operations
+  async getUser(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    // Ensure all required fields (including null fields) are properly set
+    const userData = {
+      ...insertUser,
+      teamId: null, // Set explicit null for teamId
+      bio: insertUser.bio || null,
+      avatarColor: insertUser.avatarColor || null,
+      isAdmin: false
+    };
+    
+    const [user] = await db.insert(users).values(userData).returning();
+    return user;
+  }
+
+  async updateUser(id: number, userData: Partial<User>): Promise<User | undefined> {
+    const [updatedUser] = await db
+      .update(users)
+      .set(userData)
+      .where(eq(users.id, id))
+      .returning();
+    
+    return updatedUser;
+  }
+
+  async listUsers(): Promise<User[]> {
+    return await db.select().from(users);
+  }
+
+  // Team operations
+  async getTeam(id: number): Promise<Team | undefined> {
+    const [team] = await db.select().from(teams).where(eq(teams.id, id));
+    return team;
+  }
+
+  async getTeamByName(name: string): Promise<Team | undefined> {
+    const [team] = await db.select().from(teams).where(eq(teams.name, name));
+    return team;
+  }
+
+  async createTeam(team: InsertTeam): Promise<Team> {
+    // Ensure all required fields (including null fields) are properly set
+    const teamData = {
+      ...team,
+      description: team.description || null
+    };
+    
+    const [newTeam] = await db.insert(teams).values(teamData).returning();
+    return newTeam;
+  }
+
+  async updateTeam(id: number, teamData: Partial<Team>): Promise<Team | undefined> {
+    const [updatedTeam] = await db
+      .update(teams)
+      .set(teamData)
+      .where(eq(teams.id, id))
+      .returning();
+    
+    return updatedTeam;
+  }
+
+  async deleteTeam(id: number): Promise<boolean> {
+    const result = await db.delete(teams).where(eq(teams.id, id));
+    return result.count > 0;
+  }
+
+  async listTeams(): Promise<Team[]> {
+    return await db.select().from(teams);
+  }
+
+  async getTeamMembers(teamId: number): Promise<User[]> {
+    return await db.select().from(users).where(eq(users.teamId, teamId));
+  }
+
+  // Category operations
+  async getCategory(id: number): Promise<Category | undefined> {
+    const [category] = await db.select().from(categories).where(eq(categories.id, id));
+    return category;
+  }
+
+  async createCategory(category: InsertCategory): Promise<Category> {
+    const [newCategory] = await db.insert(categories).values(category).returning();
+    return newCategory;
+  }
+
+  async updateCategory(id: number, categoryData: Partial<Category>): Promise<Category | undefined> {
+    const [updatedCategory] = await db
+      .update(categories)
+      .set(categoryData)
+      .where(eq(categories.id, id))
+      .returning();
+    
+    return updatedCategory;
+  }
+
+  async listCategories(): Promise<Category[]> {
+    return await db.select().from(categories);
+  }
+
+  // Challenge operations
+  async getChallenge(id: number): Promise<Challenge | undefined> {
+    const [challenge] = await db.select().from(challenges).where(eq(challenges.id, id));
+    return challenge;
+  }
+
+  async createChallenge(challenge: InsertChallenge): Promise<Challenge> {
+    // Ensure all required fields (including null fields) are properly set
+    const challengeData = {
+      ...challenge,
+      resourceUrl: challenge.resourceUrl || null,
+      hintText: challenge.hintText || null,
+      hintCost: challenge.hintCost || null
+    };
+    
+    const [newChallenge] = await db.insert(challenges).values(challengeData).returning();
+    return newChallenge;
+  }
+
+  async updateChallenge(id: number, challengeData: Partial<Challenge>): Promise<Challenge | undefined> {
+    const [updatedChallenge] = await db
+      .update(challenges)
+      .set(challengeData)
+      .where(eq(challenges.id, id))
+      .returning();
+    
+    return updatedChallenge;
+  }
+
+  async deleteChallenge(id: number): Promise<boolean> {
+    const result = await db.delete(challenges).where(eq(challenges.id, id));
+    return result.count > 0;
+  }
+
+  async listChallenges(): Promise<Challenge[]> {
+    return await db.select().from(challenges);
+  }
+
+  async getChallengesByCategory(categoryId: number): Promise<Challenge[]> {
+    return await db.select().from(challenges).where(eq(challenges.categoryId, categoryId));
+  }
+
+  // Submission operations
+  async getSubmission(id: number): Promise<Submission | undefined> {
+    const [submission] = await db.select().from(submissions).where(eq(submissions.id, id));
+    return submission;
+  }
+
+  async createSubmission(submission: InsertSubmission): Promise<Submission> {
+    // Check if this is the first solve for this challenge
+    const existingSubmissions = await db
+      .select()
+      .from(submissions)
+      .where(eq(submissions.challengeId, submission.challengeId));
+    
+    const isFirstBlood = existingSubmissions.length === 0;
+    
+    const [newSubmission] = await db
+      .insert(submissions)
+      .values({
+        ...submission,
+        teamId: submission.teamId || null,
+        submittedAt: new Date(),
+        isFirstBlood
+      })
+      .returning();
+    
+    return newSubmission;
+  }
+
+  async listSubmissionsByUser(userId: number): Promise<Submission[]> {
+    return await db
+      .select()
+      .from(submissions)
+      .where(eq(submissions.userId, userId));
+  }
+
+  async listSubmissionsByTeam(teamId: number): Promise<Submission[]> {
+    return await db
+      .select()
+      .from(submissions)
+      .where(eq(submissions.teamId, teamId));
+  }
+
+  async listSubmissionsByChallenge(challengeId: number): Promise<Submission[]> {
+    return await db
+      .select()
+      .from(submissions)
+      .where(eq(submissions.challengeId, challengeId));
+  }
+
+  async isChallengeCompletedByUser(userId: number, challengeId: number): Promise<boolean> {
+    const [submission] = await db
+      .select()
+      .from(submissions)
+      .where(
+        and(
+          eq(submissions.userId, userId),
+          eq(submissions.challengeId, challengeId)
+        )
+      );
+    
+    return !!submission;
+  }
+
+  async isChallengeCompletedByTeam(teamId: number, challengeId: number): Promise<boolean> {
+    const [submission] = await db
+      .select()
+      .from(submissions)
+      .where(
+        and(
+          eq(submissions.teamId, teamId),
+          eq(submissions.challengeId, challengeId)
+        )
+      );
+    
+    return !!submission;
+  }
+
+  // Hint operations
+  async createHintUnlock(hintUnlock: InsertHintUnlock): Promise<HintUnlock> {
+    const [newHintUnlock] = await db
+      .insert(hintUnlocks)
+      .values({
+        ...hintUnlock,
+        teamId: hintUnlock.teamId || null,
+        unlockedAt: new Date()
+      })
+      .returning();
+    
+    return newHintUnlock;
+  }
+
+  async isHintUnlockedByUser(userId: number, challengeId: number): Promise<boolean> {
+    const [hintUnlock] = await db
+      .select()
+      .from(hintUnlocks)
+      .where(
+        and(
+          eq(hintUnlocks.userId, userId),
+          eq(hintUnlocks.challengeId, challengeId)
+        )
+      );
+    
+    return !!hintUnlock;
+  }
+
+  async isHintUnlockedByTeam(teamId: number, challengeId: number): Promise<boolean> {
+    const [hintUnlock] = await db
+      .select()
+      .from(hintUnlocks)
+      .where(
+        and(
+          eq(hintUnlocks.teamId, teamId),
+          eq(hintUnlocks.challengeId, challengeId)
+        )
+      );
+    
+    return !!hintUnlock;
+  }
+
+  // Competition operations
+  async getCompetition(id: number): Promise<Competition | undefined> {
+    const [competition] = await db
+      .select()
+      .from(competitions)
+      .where(eq(competitions.id, id));
+    
+    return competition;
+  }
+
+  async getActiveCompetition(): Promise<Competition | undefined> {
+    const [competition] = await db
+      .select()
+      .from(competitions)
+      .where(eq(competitions.isActive, true));
+    
+    return competition;
+  }
+
+  async createCompetition(competition: InsertCompetition): Promise<Competition> {
+    // Ensure all required fields (including null fields) are properly set
+    const competitionData = {
+      ...competition,
+      description: competition.description || null,
+      isActive: competition.isActive !== undefined ? competition.isActive : false
+    };
+    
+    const [newCompetition] = await db
+      .insert(competitions)
+      .values(competitionData)
+      .returning();
+    
+    return newCompetition;
+  }
+
+  async updateCompetition(id: number, competitionData: Partial<Competition>): Promise<Competition | undefined> {
+    const [updatedCompetition] = await db
+      .update(competitions)
+      .set(competitionData)
+      .where(eq(competitions.id, id))
+      .returning();
+    
+    return updatedCompetition;
+  }
+
+  async addChallengeToCompetition(competitionId: number, challengeId: number): Promise<CompetitionChallenge> {
+    const [competitionChallenge] = await db
+      .insert(competitionChallenges)
+      .values({ competitionId, challengeId })
+      .returning();
+    
+    return competitionChallenge;
+  }
+
+  // Team Join Request operations
+  async createTeamJoinRequest(request: InsertTeamJoinRequest): Promise<TeamJoinRequest> {
+    const [newRequest] = await db
+      .insert(teamJoinRequests)
+      .values({
+        ...request,
+        requestedAt: new Date(),
+        status: "pending"
+      })
+      .returning();
+    
+    return newRequest;
+  }
+
+  async updateTeamJoinRequest(id: number, status: string): Promise<TeamJoinRequest | undefined> {
+    const [updatedRequest] = await db
+      .update(teamJoinRequests)
+      .set({ status })
+      .where(eq(teamJoinRequests.id, id))
+      .returning();
+    
+    return updatedRequest;
+  }
+
+  async getTeamJoinRequests(teamId: number): Promise<TeamJoinRequest[]> {
+    return await db
+      .select()
+      .from(teamJoinRequests)
+      .where(
+        and(
+          eq(teamJoinRequests.teamId, teamId),
+          eq(teamJoinRequests.status, "pending")
+        )
+      );
+  }
+
+  async getUserTeamJoinRequests(userId: number): Promise<TeamJoinRequest[]> {
+    return await db
+      .select()
+      .from(teamJoinRequests)
+      .where(eq(teamJoinRequests.userId, userId));
+  }
+
+  // Scoreboard operations
+  async getUserScore(userId: number): Promise<number> {
+    const userSubmissions = await this.listSubmissionsByUser(userId);
+    
+    // Create array of unique challenge IDs
+    const challengeIdsMap: {[key: number]: boolean} = {};
+    userSubmissions.forEach(submission => {
+      challengeIdsMap[submission.challengeId] = true;
+    });
+    
+    const challengeIds = Object.keys(challengeIdsMap).map(id => parseInt(id));
+    
+    // Get score from challenges
+    let totalScore = 0;
+    for (const challengeId of challengeIds) {
+      const challenge = await this.getChallenge(challengeId);
+      if (challenge) {
+        totalScore += challenge.points;
+      }
+    }
+    
+    return totalScore;
+  }
+
+  async getTeamScore(teamId: number): Promise<number> {
+    const teamSubmissions = await this.listSubmissionsByTeam(teamId);
+    
+    // Create array of unique challenge IDs
+    const challengeIdsMap: {[key: number]: boolean} = {};
+    teamSubmissions.forEach(submission => {
+      challengeIdsMap[submission.challengeId] = true;
+    });
+    
+    const challengeIds = Object.keys(challengeIdsMap).map(id => parseInt(id));
+    
+    // Get score from challenges
+    let totalScore = 0;
+    for (const challengeId of challengeIds) {
+      const challenge = await this.getChallenge(challengeId);
+      if (challenge) {
+        totalScore += challenge.points;
+      }
+    }
+    
+    return totalScore;
+  }
+
+  async getUserScoreboard(): Promise<{ userId: number, username: string, score: number }[]> {
+    const allUsers = await this.listUsers();
+    
+    const userScores = await Promise.all(
+      allUsers.map(async user => {
+        const score = await this.getUserScore(user.id);
+        return {
+          userId: user.id,
+          username: user.username,
+          score
+        };
+      })
+    );
+    
+    // Sort by score descending
+    return userScores.sort((a, b) => b.score - a.score);
+  }
+
+  async getTeamScoreboard(): Promise<{ teamId: number, teamName: string, score: number }[]> {
+    const allTeams = await this.listTeams();
+    
+    const teamScores = await Promise.all(
+      allTeams.map(async team => {
+        const score = await this.getTeamScore(team.id);
+        return {
+          teamId: team.id,
+          teamName: team.name,
+          score
+        };
+      })
+    );
+    
+    // Sort by score descending
+    return teamScores.sort((a, b) => b.score - a.score);
+  }
+
+  // Duel Stats Operations
+  async getDuelStats(userId: number): Promise<UsersDuelStats | undefined> {
+    const [stats] = await db
+      .select()
+      .from(usersDuelStats)
+      .where(eq(usersDuelStats.userId, userId));
+    
+    return stats;
+  }
+
+  async createDuelStats(stats: InsertUsersDuelStats): Promise<UsersDuelStats> {
+    const now = new Date();
+    const statsWithDefaults = {
+      ...stats,
+      duelWins: stats.duelWins || 0,
+      duelLosses: stats.duelLosses || 0,
+      duelRating: stats.duelRating || 1000,
+      duelLastPlayed: now
+    };
+    
+    const [newStats] = await db
+      .insert(usersDuelStats)
+      .values(statsWithDefaults)
+      .returning();
+    
+    return newStats;
+  }
+
+  async updateDuelStats(userId: number, win: boolean, ratingChange: number): Promise<UsersDuelStats | undefined> {
+    // Get current stats
+    let stats = await this.getDuelStats(userId);
+    
+    if (!stats) {
+      // Create stats if they don't exist
+      stats = await this.createDuelStats({ 
+        userId,
+        duelWins: 0,
+        duelLosses: 0,
+        duelRating: 1000
+      });
+    }
+    
+    // Update stats
+    const now = new Date();
+    const newRating = Math.max(0, stats.duelRating + (win ? ratingChange : -ratingChange));
+    
+    const [updatedStats] = await db
+      .update(usersDuelStats)
+      .set({
+        duelWins: win ? stats.duelWins + 1 : stats.duelWins,
+        duelLosses: win ? stats.duelLosses : stats.duelLosses + 1,
+        duelRating: newRating,
+        duelLastPlayed: now
+      })
+      .where(eq(usersDuelStats.userId, userId))
+      .returning();
+    
+    return updatedStats;
+  }
+
+  async getDuelLeaderboard(): Promise<{ userId: number, username: string, rating: number, wins: number, losses: number }[]> {
+    const userStatsResult = await db.select({
+      userId: usersDuelStats.userId,
+      rating: usersDuelStats.duelRating,
+      wins: usersDuelStats.duelWins,
+      losses: usersDuelStats.duelLosses
+    })
+    .from(usersDuelStats)
+    .orderBy(desc(usersDuelStats.duelRating));
+    
+    const leaderboard = [];
+    
+    for (const stats of userStatsResult) {
+      const user = await this.getUser(stats.userId);
+      if (user) {
+        leaderboard.push({
+          userId: stats.userId,
+          username: user.username,
+          rating: stats.rating,
+          wins: stats.wins,
+          losses: stats.losses
+        });
+      }
+    }
+    
+    return leaderboard;
+  }
+
+  // Duel Queue Operations
+  async addToQueue(userId: number): Promise<DuelQueue> {
+    const [queueItem] = await db
+      .insert(duelQueue)
+      .values({
+        userId,
+        joinedAt: new Date()
+      })
+      .returning();
+    
+    return queueItem;
+  }
+
+  async removeFromQueue(userId: number): Promise<boolean> {
+    const result = await db
+      .delete(duelQueue)
+      .where(eq(duelQueue.userId, userId));
+    
+    return result.count > 0;
+  }
+
+  async isUserInQueue(userId: number): Promise<boolean> {
+    const [queueItem] = await db
+      .select()
+      .from(duelQueue)
+      .where(eq(duelQueue.userId, userId));
+    
+    return !!queueItem;
+  }
+
+  async getQueuedUsers(): Promise<DuelQueue[]> {
+    return await db
+      .select()
+      .from(duelQueue)
+      .orderBy(asc(duelQueue.joinedAt));
+  }
+
+  async matchUsersFromQueue(): Promise<{ player1Id: number, player2Id: number } | null> {
+    const queuedUsers = await this.getQueuedUsers();
+    
+    if (queuedUsers.length < 2) {
+      return null;
+    }
+    
+    const player1 = queuedUsers[0];
+    const player2 = queuedUsers[1];
+    
+    // Remove players from queue
+    await this.removeFromQueue(player1.userId);
+    await this.removeFromQueue(player2.userId);
+    
+    return {
+      player1Id: player1.userId,
+      player2Id: player2.userId
+    };
+  }
+
+  // Duel Challenge Operations
+  async createDuelChallenge(challenge: InsertDuelChallenge): Promise<DuelChallenge> {
+    const [newChallenge] = await db
+      .insert(duelChallenges)
+      .values({
+        ...challenge,
+        status: "pending",
+        createdAt: new Date()
+      })
+      .returning();
+    
+    return newChallenge;
+  }
+
+  async getDuelChallenge(id: number): Promise<DuelChallenge | undefined> {
+    const [challenge] = await db
+      .select()
+      .from(duelChallenges)
+      .where(eq(duelChallenges.id, id));
+    
+    return challenge;
+  }
+
+  async getUserDuelChallenges(userId: number): Promise<DuelChallenge[]> {
+    return await db
+      .select()
+      .from(duelChallenges)
+      .where(
+        or(
+          eq(duelChallenges.challengerId, userId),
+          eq(duelChallenges.challengedId, userId)
+        )
+      );
+  }
+
+  async updateDuelChallengeStatus(id: number, status: string): Promise<DuelChallenge | undefined> {
+    const [updatedChallenge] = await db
+      .update(duelChallenges)
+      .set({ status })
+      .where(eq(duelChallenges.id, id))
+      .returning();
+    
+    return updatedChallenge;
+  }
+
+  // Duel Match Operations
+  async createDuelMatch(match: InsertDuelMatch): Promise<DuelMatch> {
+    const [newMatch] = await db
+      .insert(duelMatches)
+      .values({
+        ...match,
+        status: "preparing",
+        startedAt: new Date(),
+        endedAt: null,
+        winnerId: null,
+        duelImageId: null,
+        containerData: null,
+        scoreChange: null,
+        logs: null,
+        webTerminalEnabled: false
+      })
+      .returning();
+    
+    return newMatch;
+  }
+
+  async getDuelMatch(id: number): Promise<DuelMatch | undefined> {
+    const [match] = await db
+      .select()
+      .from(duelMatches)
+      .where(eq(duelMatches.id, id));
+    
+    return match;
+  }
+
+  async getUserDuelMatches(userId: number): Promise<DuelMatch[]> {
+    return await db
+      .select()
+      .from(duelMatches)
+      .where(
+        or(
+          eq(duelMatches.player1Id, userId),
+          eq(duelMatches.player2Id, userId)
+        )
+      );
+  }
+
+  async updateDuelMatch(id: number, matchData: Partial<DuelMatch>): Promise<DuelMatch | undefined> {
+    const [updatedMatch] = await db
+      .update(duelMatches)
+      .set(matchData)
+      .where(eq(duelMatches.id, id))
+      .returning();
+    
+    return updatedMatch;
+  }
+
+  async updateDuelMatchStatus(id: number, status: string): Promise<DuelMatch | undefined> {
+    const [updatedMatch] = await db
+      .update(duelMatches)
+      .set({ status })
+      .where(eq(duelMatches.id, id))
+      .returning();
+    
+    return updatedMatch;
+  }
+
+  async setDuelMatchWinner(id: number, winnerId: number, scoreChange: number): Promise<DuelMatch | undefined> {
+    const match = await this.getDuelMatch(id);
+    if (!match) return undefined;
+    
+    const now = new Date();
+    const winnerStatus = match.player1Id === winnerId ? "player1_victory" : "player2_victory";
+    
+    const [updatedMatch] = await db
+      .update(duelMatches)
+      .set({
+        status: winnerStatus,
+        endedAt: now,
+        winnerId,
+        scoreChange
+      })
+      .where(eq(duelMatches.id, id))
+      .returning();
+    
+    // Update stats
+    const loserId = match.player1Id === winnerId ? match.player2Id : match.player1Id;
+    await this.updateDuelStats(winnerId, true, scoreChange);
+    await this.updateDuelStats(loserId, false, scoreChange);
+    
+    return updatedMatch;
+  }
+
+  async getActiveDuelMatch(userId: number): Promise<DuelMatch | undefined> {
+    const activeStates = ["preparing", "in_progress"];
+    
+    const [match] = await db
+      .select()
+      .from(duelMatches)
+      .where(
+        and(
+          or(
+            eq(duelMatches.player1Id, userId),
+            eq(duelMatches.player2Id, userId)
+          ),
+          inArray(duelMatches.status, activeStates)
+        )
+      );
+      
+    return match;
+  }
+  
+  // Duel Images Operations
+  async createDuelImage(image: InsertDuelImage): Promise<DuelImage> {
+    const [newDuelImage] = await db
+      .insert(duelImages)
+      .values(image)
+      .returning();
+    return newDuelImage;
+  }
+
+  async getDuelImage(id: number): Promise<DuelImage | undefined> {
+    const [duelImage] = await db
+      .select()
+      .from(duelImages)
+      .where(eq(duelImages.id, id));
+    return duelImage;
+  }
+
+  async listDuelImages(): Promise<DuelImage[]> {
+    return await db.select().from(duelImages);
+  }
+
+  async listEnabledDuelImages(): Promise<DuelImage[]> {
+    return await db
+      .select()
+      .from(duelImages)
+      .where(eq(duelImages.isEnabled, true));
+  }
+
+  async updateDuelImage(id: number, imageData: Partial<DuelImage>): Promise<DuelImage | undefined> {
+    const [updatedImage] = await db
+      .update(duelImages)
+      .set(imageData)
+      .where(eq(duelImages.id, id))
+      .returning();
+    return updatedImage;
+  }
+
+  async deleteDuelImage(id: number): Promise<boolean> {
+    const result = await db.delete(duelImages).where(eq(duelImages.id, id));
+    return result.count > 0;
+  }
+
+  // Duel Terminal Sessions Operations
+  async createDuelTerminalSession(session: InsertDuelTerminalSession): Promise<DuelTerminalSession> {
+    const [newSession] = await db
+      .insert(duelTerminalSessions)
+      .values({
+        ...session,
+        createdAt: new Date(),
+        lastActivityAt: new Date()
+      })
+      .returning();
+    return newSession;
+  }
+
+  async getDuelTerminalSession(id: number): Promise<DuelTerminalSession | undefined> {
+    const [session] = await db
+      .select()
+      .from(duelTerminalSessions)
+      .where(eq(duelTerminalSessions.id, id));
+    return session;
+  }
+
+  async getDuelTerminalSessionByToken(token: string): Promise<DuelTerminalSession | undefined> {
+    const [session] = await db
+      .select()
+      .from(duelTerminalSessions)
+      .where(eq(duelTerminalSessions.token, token));
+    return session;
+  }
+
+  async markTerminalSessionActive(id: number, active: boolean): Promise<DuelTerminalSession | undefined> {
+    const [updatedSession] = await db
+      .update(duelTerminalSessions)
+      .set({ isActive: active })
+      .where(eq(duelTerminalSessions.id, id))
+      .returning();
+    return updatedSession;
+  }
+
+  async updateTerminalSessionLastActivity(id: number): Promise<DuelTerminalSession | undefined> {
+    const [updatedSession] = await db
+      .update(duelTerminalSessions)
+      .set({ lastActivityAt: new Date() })
+      .where(eq(duelTerminalSessions.id, id))
+      .returning();
+    return updatedSession;
+  }
+
+  async getUserActiveDuelTerminalSession(userId: number, matchId: number): Promise<DuelTerminalSession | undefined> {
+    const [session] = await db
+      .select()
+      .from(duelTerminalSessions)
+      .where(
+        and(
+          eq(duelTerminalSessions.userId, userId),
+          eq(duelTerminalSessions.matchId, matchId),
+          eq(duelTerminalSessions.isActive, true)
+        )
+      );
+    return session;
+  }
+
+  // Duel Images Operations
+  async createDuelImage(image: InsertDuelImage): Promise<DuelImage> {
+    const [newDuelImage] = await db
+      .insert(duelImages)
+      .values(image)
+      .returning();
+    return newDuelImage;
+  }
+
+  async getDuelImage(id: number): Promise<DuelImage | undefined> {
+    const [duelImage] = await db
+      .select()
+      .from(duelImages)
+      .where(eq(duelImages.id, id));
+    return duelImage;
+  }
+
+  async listDuelImages(): Promise<DuelImage[]> {
+    return await db.select().from(duelImages);
+  }
+
+  async listEnabledDuelImages(): Promise<DuelImage[]> {
+    return await db
+      .select()
+      .from(duelImages)
+      .where(eq(duelImages.isEnabled, true));
+  }
+
+  async updateDuelImage(id: number, imageData: Partial<DuelImage>): Promise<DuelImage | undefined> {
+    const [updatedImage] = await db
+      .update(duelImages)
+      .set(imageData)
+      .where(eq(duelImages.id, id))
+      .returning();
+    return updatedImage;
+  }
+
+  async deleteDuelImage(id: number): Promise<boolean> {
+    const result = await db.delete(duelImages).where(eq(duelImages.id, id));
+    return result.count > 0;
+  }
+
+  // Duel Terminal Sessions Operations
+  async createDuelTerminalSession(session: InsertDuelTerminalSession): Promise<DuelTerminalSession> {
+    const [newSession] = await db
+      .insert(duelTerminalSessions)
+      .values({
+        ...session,
+        createdAt: new Date(),
+        lastActivityAt: new Date()
+      })
+      .returning();
+    return newSession;
+  }
+
+  async getDuelTerminalSession(id: number): Promise<DuelTerminalSession | undefined> {
+    const [session] = await db
+      .select()
+      .from(duelTerminalSessions)
+      .where(eq(duelTerminalSessions.id, id));
+    return session;
+  }
+
+  async getDuelTerminalSessionByToken(token: string): Promise<DuelTerminalSession | undefined> {
+    const [session] = await db
+      .select()
+      .from(duelTerminalSessions)
+      .where(eq(duelTerminalSessions.token, token));
+    return session;
+  }
+
+  async markTerminalSessionActive(id: number, active: boolean): Promise<DuelTerminalSession | undefined> {
+    const [updatedSession] = await db
+      .update(duelTerminalSessions)
+      .set({ isActive: active })
+      .where(eq(duelTerminalSessions.id, id))
+      .returning();
+    return updatedSession;
+  }
+
+  async updateTerminalSessionLastActivity(id: number): Promise<DuelTerminalSession | undefined> {
+    const [updatedSession] = await db
+      .update(duelTerminalSessions)
+      .set({ lastActivityAt: new Date() })
+      .where(eq(duelTerminalSessions.id, id))
+      .returning();
+    return updatedSession;
+  }
+}
+
+export const storage = new DatabaseStorage();

@@ -1,0 +1,91 @@
+La idea es crear un modo de juego competitivo en tiempo real para dos jugadores dentro de la plataforma CTF existente (CyberChallenge). Cada jugador recibe el control (o acceso limitado para ataque) de una instancia Docker basada en Kali Linux, preconfigurada con un conjunto idéntico de vulnerabilidades conocidas (aplicaciones web inseguras, servicios mal configurados, credenciales débiles, etc.).
+
+Objetivo Principal: Ser el primer jugador en explotar las vulnerabilidades del contenedor Docker del oponente y lograr ejecutar un script específico (por ejemplo, /opt/shutdown_opponent.sh) dentro de ese contenedor enemigo.
+Condición de Victoria: La ejecución exitosa de dicho script en el contenedor del oponente. La plataforma detecta esta ejecución y declara al atacante como ganador de la ronda.
+Defensa: Simultáneamente, cada jugador debe intentar proteger su propio contenedor, parcheando vulnerabilidades o detectando y bloqueando los ataques del oponente si es posible (aunque el enfoque principal suele ser ofensivo en este tipo de juegos).
+Entorno Controlado: Todo ocurre dentro de una red Docker aislada para garantizar la seguridad y evitar impacto fuera del juego.
+Sistema de Puntos: Las victorias y derrotas se registran, afectando a un ranking o puntuación específica para este modo de juego.
+Cómo Implementarlo (Integrado en CyberChallenge)
+
+Aquí detallo los pasos y componentes necesarios:
+
+Preparación del Entorno Docker:
+
+Dockerfile para la Máquina Vulnerable (Dockerfile.kali-vulnerable):
+Base: Usar una imagen oficial de Kali (kalilinux/kali-rolling o una versión estable).
+Instalar Servicios: Instalar servicios necesarios que serán vulnerables (ej: apache2, ssh, proftpd, mysql-server o postgresql-client, python3, php, netcat).
+Configurar Vulnerabilidades:
+Copiar una aplicación web simple y vulnerable (ej. un login con SQL Injection, una subida de archivos sin validar, LFI/RFI).
+Configurar credenciales débiles para SSH (root:toor o similar), o para la base de datos.
+Dejar permisos incorrectos en ciertos directorios o scripts.
+Opcional (con cuidado): Instalar una versión específica y antigua de un servicio con una vulnerabilidad conocida (requiere buen aislamiento de red).
+Script "Shutdown": Crear un script /opt/shutdown_opponent.sh. Este script no debe apagar realmente el contenedor (eso lo hará el sistema gestor). Su función es simplemente actuar como señal de victoria. Podría hacer algo simple como:
+Bash
+
+#!/bin/bash
+echo "HACKED by $(hostname)" > /tmp/VICTORY_SIGNAL
+# Podría también intentar comunicarse con un servicio de control externo
+exit 0
+Entrypoint/CMD: Asegurarse de que los servicios necesarios (SSH, web server) se inicien cuando el contenedor arranque.
+Construir la Imagen: docker build -t kali-vulnerable-duel -f Dockerfile.kali-vulnerable .
+Red Docker Dedicada: Crear una red aislada para cada partida o una red persistente para este modo: docker network create kali-duel-net
+Sistema de Gestión de Partidas (Backend - server/ en tu proyecto):
+
+Nuevas Rutas API (server/routes.ts):
+/api/duel/queue: Para que un jugador entre en la cola de espera.
+/api/duel/challenge/{userId}: Para desafiar a un jugador específico.
+/api/duel/match/{matchId}: Para obtener el estado de una partida en curso.
+/api/duel/match/{matchId}/ip: Para que cada jugador obtenga la IP del contenedor del oponente.
+Lógica de Matchmaking: Un sistema simple que empareje a jugadores en la cola o gestione desafíos directos.
+Orquestación de Contenedores: Cuando se inicia una partida (matchId):
+El backend usa la librería Docker de Node.js (dockerode) o ejecuta comandos docker CLI.
+Lanza dos contenedores desde la imagen kali-vulnerable-duel: player1_container, player2_container.
+Conecta ambos contenedores a la red kali-duel-net. Puedes asignarles IPs estáticas o usar los nombres de contenedor para la resolución DNS dentro de esa red.
+Almacena la relación matchId -> container_ids, player_ids, ips.
+Proporciona a cada jugador (a través de la API /api/duel/match/{matchId}/ip) la IP/hostname del contenedor enemigo.
+Monitorización de Victoria:
+El backend necesita comprobar periódicamente la condición de victoria en ambos contenedores.
+Usando docker exec [container_id] test -f /tmp/VICTORY_SIGNAL, puede verificar si el archivo señal existe.
+El primero en detectar el archivo en el contenedor player2_container significa que player1 ha ganado, y viceversa.
+Finalización de Partida:
+Una vez detectada la victoria:
+Registrar el resultado (quién ganó, quién perdió).
+Actualizar las puntuaciones/rankings de los jugadores.
+Detener ambos contenedores: docker stop player1_container player2_container.
+Eliminar los contenedores: docker rm player1_container player2_container.
+Opcional: Eliminar la red si se crea una por partida.
+Sistema de Puntos y Ranking:
+
+Extender Esquema (shared/schema.ts): Añadir campos a la tabla users para el ranking de este modo:
+TypeScript
+
+// En la tabla users
+duelWins: integer("duel_wins").default(0).notNull(),
+duelLosses: integer("duel_losses").default(0).notNull(),
+duelRating: integer("duel_rating").default(1000).notNull(), // Elo inicial
+Actualizar Almacenamiento (server/storage.ts): Implementar funciones para actualizar estas estadísticas después de cada partida. Considera usar un sistema Elo simple para duelRating.
+Nuevas Rutas API (server/routes.ts):
+/api/scoreboard/duel: Para obtener el ranking específico de este modo.
+Interfaz (client/src/): Mostrar el ranking de "Docker Duel" en una sección separada o integrada en el scoreboard general.
+Interfaz de Usuario (Frontend - client/src/):
+
+Nueva Sección "Duel": Añadir un enlace en la navegación principal.
+Sub-secciones:
+Buscar Partida: Botón para unirse a la cola o lista de jugadores disponibles para desafiar.
+Partida Actual: Si el jugador está en una partida, mostrar:
+IP del oponente.
+Un temporizador (opcional).
+Estado de la partida ("Esperando oponente", "En curso", "¡Has ganado!", "Has perdido").
+Quizás: Un terminal web básico (usando docker exec vía websockets) para interactuar con su propio contenedor (¡esto es complejo y requiere cuidado!). O simplemente dar instrucciones para usar ssh o docker exec desde su máquina local si tienen Docker instalado.
+Ranking Duel: Mostrar la tabla de clasificación específica de este modo.
+Consideraciones de Seguridad:
+
+Aislamiento de Red: Es CRÍTICO. La red Docker (kali-duel-net) debe estar configurada para no tener acceso a la red del host ni a internet por defecto, solo permitir la comunicación entre los dos contenedores de la partida. Investiga las opciones de docker network create --internal o configura reglas de iptables en el host si es necesario.
+Recursos: Limita la CPU y memoria que cada contenedor puede usar (docker run --cpus="1" --memory="512m" ...) para evitar abusos.
+Limpieza: Asegúrate de que los contenedores se eliminan (docker rm) correctamente después de cada partida.
+Vulnerabilidades Controladas: Diseña las vulnerabilidades cuidadosamente para que sean explotables dentro del contenedor, pero muy difíciles de usar para escapar al host. Evita configuraciones que den acceso directo al sistema de archivos del host o al socket de Docker desde dentro del contenedor.
+Integración con tu Código CyberChallenge:
+
+Tu backend (server/index.ts, server/routes.ts) es el lugar ideal para implementar la lógica de gestión de partidas y la orquestación de Docker.
+Tu esquema Drizzle (shared/schema.ts) y la capa de almacenamiento (server/storage.ts) necesitarán ser extendidos para soportar las nuevas estadísticas y potencialmente el estado de las partidas.
+Tu frontend (client/src/) necesitará nuevas vistas y componentes para la interfaz de usuario del modo "Docker Duel".

@@ -1,0 +1,106 @@
+Mantenemos el concepto central del duelo 1v1, pero con las siguientes mejoras clave:
+
+Acceso Interactivo: Cada jugador accede a su propio contenedor Kali asignado a través de una terminal interactiva directamente en el navegador web. Esto elimina la necesidad de que los jugadores tengan Docker instalado localmente o usen SSH externo, haciendo el juego más accesible. Desde esta terminal, lanzarán sus ataques contra el contenedor del oponente.
+Gestión de Entornos por Admins: Los administradores de la plataforma CyberChallenge tendrán un panel donde podrán definir y gestionar un conjunto de diferentes imágenes Docker vulnerables (construidas previamente por ellos y disponibles en el host o en un registro). Pueden añadir nuevas imágenes, describirlas y habilitarlas/deshabilitarlas para los duelos.
+Entornos Aleatorios: Cuando se inicia un nuevo duelo, el sistema seleccionará aleatoriamente una de las imágenes Docker habilitadas por el administrador. Ambos jugadores en esa partida recibirán contenedores idénticos basados en esa imagen seleccionada al azar, asegurando la equidad dentro de la partida pero añadiendo variedad entre partidas distintas.
+Cómo Implementarlo (Continuación)
+
+Basándonos en la implementación anterior, aquí están los cambios y adiciones:
+
+Preparación del Entorno Docker (Modificaciones):
+
+Múltiples Imágenes Vulnerables: Los administradores crearán varios Dockerfile (ej: Dockerfile.kali-web, Dockerfile.kali-service, Dockerfile.kali-network) y construirán imágenes con tags únicos (ej: cyberchallenge/duel-kali-web:v1, cyberchallenge/duel-kali-service:v1).
+Disponibilidad de Imágenes: Estas imágenes deben estar presentes en el host donde corre el backend o en un registro Docker accesible por el host.
+Script de Victoria: Cada imagen aún debe contener el script /opt/shutdown_opponent.sh (o el mecanismo de señalización elegido).
+Requisito Interno: No se necesitan herramientas adicionales dentro del contenedor Kali para la terminal web si usamos el enfoque de docker exec desde el backend.
+Sistema de Gestión de Partidas (Backend - Modificaciones y Adiciones):
+
+Nueva Tabla en Base de Datos (shared/schema.ts):
+TypeScript
+
+export const duelImages = pgTable("duel_images", {
+  id: serial("id").primaryKey(),
+  imageTag: text("image_tag").notNull().unique(), // Ej: "cyberchallenge/duel-kali-web:v1"
+  name: text("name").notNull(),                   // Ej: "Reto Web Básico"
+  description: text("description"),
+  isEnabled: boolean("is_enabled").default(true).notNull(),
+  // Opcional: admin que la añadió, fecha, etc.
+  // addedByAdminId: integer("added_by_admin_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+// ... (Tipos Zod y Select/Insert correspondientes) ...
+Nuevas Funciones de Almacenamiento (server/storage.ts):
+createDuelImage(imageData)
+listEnabledDuelImages(): Devuelve array de { imageTag, name, description }.
+getAllDuelImages(): Para el panel de admin.
+updateDuelImage(id, updateData)
+deleteDuelImage(id)
+Nuevas Rutas API Admin (server/routes.ts): (Protegidas con isAdmin)
+POST /api/admin/duel-images: Para añadir una nueva definición de imagen (tag, nombre, desc).
+GET /api/admin/duel-images: Para listar todas las imágenes para el panel.
+PUT /api/admin/duel-images/{id}: Para actualizar (ej: habilitar/deshabilitar, cambiar desc).
+DELETE /api/admin/duel-images/{id}: Para eliminar una definición.
+Modificación de la Lógica de Inicio de Partida:
+Antes de crear contenedores:
+Llamar a storage.listEnabledDuelImages().
+Si la lista está vacía, error.
+Seleccionar una imagen al azar: const selectedImage = enabledImages[Math.floor(Math.random() * enabledImages.length)];
+Usar selectedImage.imageTag en los comandos docker run.
+Implementación de la Terminal Web (Backend):
+Añadir Dependencias: npm install ws node-pty (o yarn add ws node-pty). node-pty puede requerir dependencias de compilación en el host.
+Servidor WebSocket: Integrar un servidor WebSocket con tu servidor Express (server/index.ts). Usar la librería ws.
+Endpoint de Conexión Terminal: Crear una ruta API, por ejemplo GET /api/duel/match/{matchId}/terminal (protegida con isAuthenticated).
+Verifica que el usuario está en la partida matchId.
+Genera un token temporal (quizás un JWT corto) que autorice la conexión WebSocket para ese usuario y su contenedor específico en esa partida.
+Devuelve la URL del WebSocket (ej: wss://yourdomain.com/ws/duel/terminal) y el token.
+Lógica del WebSocket:
+Al recibir una conexión en /ws/duel/terminal:
+Validar el token recibido. Extraer userId, matchId, containerId (el del propio jugador).
+Usar node-pty para iniciar un shell dentro del contenedor del jugador:
+JavaScript
+
+import * as pty from 'node-pty';
+const shell = 'bash'; // o 'sh'
+const ptyProcess = pty.spawn('docker', ['exec', '-it', containerId, shell, '-li'], {
+  name: 'xterm-color',
+  cols: 80, // Valores iniciales, se pueden ajustar
+  rows: 30,
+  cwd: process.env.HOME, // O directorio relevante dentro del contenedor
+  env: process.env
+});
+Proxy de Datos:
+Cuando el WebSocket recibe datos (ws.on('message', data => ...)): Enviarlos al ptyProcess.write(data).
+Cuando el ptyProcess emite datos (ptyProcess.onData(data => ...)): Enviarlos al cliente a través del WebSocket (ws.send(data)).
+Manejo de Redimensionamiento: Permitir que el cliente envíe mensajes para redimensionar el PTY (ptyProcess.resize(cols, rows)).
+Manejo de Desconexión: Asegurarse de que el ptyProcess se destruye (ptyProcess.kill()) cuando el WebSocket se cierra o la partida termina.
+Interfaz de Usuario (Frontend - Modificaciones y Adiciones):
+
+Dependencias: npm install xterm xterm-addon-fit (o yarn add ...).
+Componente de Terminal: Crear un componente React (ej: WebTerminal.tsx).
+Usará xterm para renderizar la terminal.
+Al montarse:
+Llamará al endpoint /api/duel/match/{matchId}/terminal para obtener la URL del WebSocket y el token.
+Establecerá la conexión WebSocket, enviando el token para autenticación.
+Configurará los listeners para enviar input del usuario al backend y mostrar output del backend en la terminal xterm.
+Usará xterm-addon-fit para ajustar el tamaño de la terminal al contenedor HTML y enviará mensajes de redimensionamiento al backend.
+Vista de Partida:
+Incluir el componente WebTerminal para el contenedor del jugador.
+Mostrar claramente la IP/hostname del oponente por separado.
+Mostrar el nombre del entorno aleatorio seleccionado para la partida (obtenido de los detalles del match).
+Panel de Administración:
+Nueva sección "Gestionar Entornos de Duelo".
+Tabla listando las imágenes (nombre, tag, descripción, estado habilitado).
+Formulario para añadir nuevas imágenes (introduciendo tag, nombre, descripción).
+Botones para editar (habilitar/deshabilitar) y eliminar definiciones.
+Flujo Resumido:
+
+Admin define imágenes (kali-duel-web:v1, kali-duel-service:v1) en el panel.
+Jugador 1 y Jugador 2 entran en duelo.
+El backend elige aleatoriamente, por ejemplo, kali-duel-service:v1.
+El backend lanza 2 contenedores usando kali-duel-service:v1 en la red kali-duel-net.
+El frontend del Jugador 1 pide la URL del WS, se conecta a su terminal web (que ejecuta docker exec en su contenedor). Ve la IP del contenedor del Jugador 2.
+El frontend del Jugador 2 hace lo mismo (se conecta a su terminal, ve la IP del Jugador 1).
+Los jugadores usan sus terminales web para atacar al oponente.
+Jugador 1 logra ejecutar /opt/shutdown_opponent.sh en el contenedor del Jugador 2.
+El backend detecta el /tmp/VICTORY_SIGNAL en el contenedor de Jugador 2.
+El backend declara ganador a Jugador 1, actualiza puntos, detiene y elimina ambos contenedores. Las conexiones WebSocket se cierran.
